@@ -1,9 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname
-  .replace(/^\//, "")
-  .replaceAll("/", "\\");
+const root = fileURLToPath(new URL("..", import.meta.url));
 const targets = ["fixtures/sanitized", "docs/probes", "docs/adr"];
 const forbidden = [
   /access[_-]?token/i,

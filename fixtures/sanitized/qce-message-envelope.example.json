@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "data": {
+    "messages": [
+      {
+        "msgId": "message-example",
+        "msgSeq": "sequence-example",
+        "senderUid": "member-example",
+        "sendMemberName": "Example Member",
+        "msgTime": "2026-08-15T10:20:30+08:00",
+        "elements": [
+          {
+            "elementType": 10,
+            "arkElement": {
+              "title": "Example Album",
+              "artist": "Example Artist",
+              "url": "https://music.163.com/#/album?id=123456"
+            }
+          }
+        ]
+      }
+    ],
+    "hasNext": false,
+    "currentPage": 1,
+    "totalPages": 1
+  }
+}

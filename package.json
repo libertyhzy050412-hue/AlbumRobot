@@ -1,0 +1,27 @@
+{
+  "name": "albumrobot",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "deploy:worker": "pnpm --filter @albumrobot/web build && pnpm --dir worker deploy",
+    "dev:web": "pnpm --filter @albumrobot/web dev",
+    "dev:worker": "pnpm --filter @albumrobot/worker dev",
+    "format:check": "prettier --check .",
+    "lint": "pnpm --filter @albumrobot/worker lint && pnpm --filter @albumrobot/web lint",
+    "privacy:scan": "node scripts/privacy-scan.mjs",
+    "deploy:check": "node scripts/production-preflight.mjs",
+    "smoke:local": "node scripts/local-smoke.mjs",
+    "seed:visual": "node scripts/seed-visual-local.mjs",
+    "probe:phase0": "node scripts/phase0-probe.mjs",
+    "test": "pnpm --filter @albumrobot/worker test && pnpm --filter @albumrobot/web test",
+    "typecheck": "pnpm --filter @albumrobot/worker typecheck && pnpm --filter @albumrobot/web typecheck"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

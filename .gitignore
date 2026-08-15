@@ -1,0 +1,44 @@
+# Node / pnpm
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+.vite/
+
+# Local configuration and secrets
+.env*
+.dev.vars*
+!.env.example
+security.json
+appsettings.Local.json
+*.user
+
+# Local databases and runtime state
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+logs/
+diagnostics/
+qce-data/
+artifacts/
+fixtures/raw/
+worker/.wrangler/
+
+# .NET
+bin/
+obj/
+.vs/
+TestResults/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Wrangler local state
+.wrangler/

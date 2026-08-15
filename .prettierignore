@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+worker/.wrangler
+apps/sync
+*.sln
+PROJECT_PROGRESS_CODEX.md
+DEVELOPMENT_PLAN.md
+pnpm-lock.yaml

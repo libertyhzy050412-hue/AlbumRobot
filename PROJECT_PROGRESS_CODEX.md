@@ -1,12 +1,12 @@
 ---
 project: AlbumRobot
 document_role: canonical-source-of-truth + codex-development-handoff
-document_version: 5.0
+document_version: 5.1
 updated_at: 2026-08-15
-project_stage: implementation-ready
+project_stage: json-first-mvp-ui-v1-locally-validated
 last_completed_grill_question: 219
-next_step: phase_0_probe_then_vertical_slice
-implementation_started: false
+next_step: commit_push_then_connect_github_and_deploy_worker
+implementation_started: true
 primary_target: V1
 canonical_domain: album.rocknrollliberty.dpdns.org
 ---
@@ -104,7 +104,7 @@ Worker Router、React 状态管理、Motion library、WPF / WinUI 等属于实�
 
 ### 视觉与 Motion
 - Apple Music 设计语言；
-- Light / Dark，默认跟随系统；
+- 仅实现 Light 外观；不开发 Dark 主题，也不跟随系统切换到深色；
 - 不做品牌 Splash / Logo 演出；
 - Motion 是一级质量要求；
 - 移动端 Bottom Sheet + Shared Element 是核心验收项；
@@ -475,11 +475,12 @@ Q219 后，常规 Grill 正式结束。Codex 默认：**自行决断实现细节
 因此后续不要再转回杂志、RYM、复古数据库、实体唱片柜等视觉方向。
 
 ## Q35 — 浅 / 深色
-**用户选择：C**
-**状态：LOCKED**
+**原选择：C；2026-08-15 被用户最新指令明确覆盖**
+**状态：LOCKED / SUPERSEDED**
 
-- 浅色 + 深色；
-- 默认跟随系统。
+- 最新决定只开发浅色外观；
+- 不实现深色主题，不跟随系统深色偏好；
+- 其余 Apple Music 视觉与 Motion 质量要求保持不变。
 
 ## 动效一级约束
 **状态：LOCKED**
@@ -599,7 +600,7 @@ Apple 式 Search Mode：
 - 根据滚动轻微响应；
 - 不完全隐藏；
 - Safe Area 正确；
-- 深浅模式适配。
+- 仅使用浅色 Material 层级。
 
 ## Q42 — 一级 Tab 之间的页面转场
 **用户选择：D**
@@ -2156,9 +2157,9 @@ Cloudflare Static Assets/Worker/D1、绑定 `album.rocknrollliberty.dpdns.org`�
 - Member 稳定 ID / nickname；
 - Message ID / seq / pagination；
 - 历史消息覆盖范围 / 离线补消息；
-- 网易云专辑卡片真实结构；
-- JSON Export schema；
-- Direct / JSON 字段差异。
+- Direct API 的网易云专辑卡片真实结构；
+- JSON Export schema 与本地 Netease album card 分支已验证；
+- Direct / JSON 同卡片字段差异。
 
 ## 网易云
 - 短链当前解析方式；
@@ -2225,12 +2226,73 @@ Group-scoped；必须基于 QCE 可验证稳定身份，不依赖昵称。历史
 product_design_complete = true
 architecture_baseline_complete = true
 grill_closed = true
-implementation_started = false
-next_step = phase_0_probe_then_vertical_slice
+implementation_started = true
+next_step = create_production_d1_then_push_and_connect_github
 ```
+
+# L.1 QCE 本地化跟进（2026-08-15）
+
+- 已下载并校验 QCE v6.2.3 Windows x64 官方 release，解压到被 `.gitignore` 忽略的 `qce-data/`。
+- 已用隔离配置启动 standalone，验证 QCE API 版本与 WebUI；已把 Direct HTTP 边界实现为 `QceDirectClient`，响应保持为 JSON 直到本地 Normalizer 消费。
+- full mode 已完成 QQ 登录和目标群序号选择；已在本机脱敏验证群列表、成员数组、消息分页和消息信封字段。未保存真实群标识、成员信息、消息正文或原始 payload。
+- 本阶段不保存 token、完整聊天、原始 payload 或真实群标识。
 
 当 Codex 开始实际修改代码后，将 `implementation_started = true` 写入后续进度文档。
 
 Codex 第一条工作指令：
 
 > **先检查现有 AlbumRobot 仓库状态；然后建立最小 monorepo 基线和技术探针，不要先做完整 UI。**
+
+# L. Codex 实施进度（2026-08-15）
+
+实现已开始，当前处于 Phase 0 → Phase 2 Sync V1 过渡：
+
+- 已建立 pnpm workspace、React/Vite Web、Cloudflare Worker/D1、.NET 10 Sync solution、CI、隐私扫描、ADR 和探针目录；
+- 已通过本地 Wrangler dry-run、D1 migration、Worker health、标准化 Batch accepted/duplicate/invalid、Album 查询和 PWA shell 验证；
+- C# 本地网易云专辑 URL/ID Detector、QCE JSON Export Normalizer、桌面配置/运行时和本地导入已有 23 个单元测试；
+- QCE v6.2.3 已下载并完成 full-mode 本机探针；已确认 Direct API 的群/成员/消息 envelope 字段，并补充 C# `QceMessageNormalizer`、本地 `QceAlbumScanner` 和队列到 Batch 的 `LocalSyncOrchestrator`；
+- 已在本机检查真实 QCE JSON Export 的网易云专辑卡片字段边界（仅保留字段形状，不持久化原始内容）；歌曲卡和非网易云卡片会被忽略；
+- 已完成可视化 WPF Desktop Sync：QCE 自动读取本机凭据、群列表/选择、回看天数、首次确认、JSON 导入降级、Pending 状态、Batch 上传和本地数据目录入口；
+- 已完成 PWA 浏览首版：Light-only Apple Music 视觉、专辑 / 动态 / 统计三页、Search Mode、筛选排序、统计钻取、分级日期定位、Shared Element 详情、移动 Bottom Sheet、桌面 Navigation Rail / Floating Sheet、Back 与 Reduced Motion 基线；
+- Direct API 的同卡片分支、ID 跨扫描稳定性和历史 overlap 仍为 UNVERIFIED；
+- 已完成 Cloudflare OAuth、创建 Asia Pacific 生产 D1 并应用 `0001_phase0.sql`；尚未部署 Worker、设置 Runtime Secrets、修改 DNS 或产生付费服务。
+
+合成数据 Vertical Slice 基线已完成；QCE envelope → RawQQMessage → Detector → SQLite Pending → Batch client 编排链路、JSON fallback 和桌面 UI 已完成编译与测试。当前先交付 JSON-first 可用版：真实 Direct 卡片与 overlap 证据延后，但不取消。
+
+# M. Codex 交接索引（2026-08-15）
+
+完整交接记录位于 `docs/CODEX_HANDOFF_2026-08-15.md`，包含当前工作树、QCE 本地安装、验证命令、隐私边界、首次部署顺序、剩余探针和下一对话可直接复制的提示词。生产 D1 与远端 migration 已完成；下一步提交推送 GitHub 并完成 Cloudflare Worker 首次部署，再继续 Direct 网易云卡片探针；不应重新讨论 Q1～Q219。
+
+# N. JSON-first MVP 与首次部署准备（2026-08-15）
+
+- 首版推荐路径调整为：`QCE 手工导出 JSON → Desktop Sync 本机解析 → SQLite Pending → 远端 Worker/D1 → 密码保护的专辑页`。这只是交付顺序调整，Direct QCE 仍是后续主路径目标。
+- Worker 已加入群共享密码会话和独立 Sync Token；Album API 不再要求浏览器携带真实 group ID，Batch 只接受配置的目标群和 Bearer Token。
+- 登录已接入不持久化客户端 IP 的 Cloudflare Rate Limiting binding；Static Assets 与 API 响应均加入安全响应头。
+- 群密码变更会因 session password fingerprint 改变而使旧会话失效；密码、Session Secret、Sync Token 和真实目标群 ID 均只允许配置为 Cloudflare Runtime Secrets。
+- Web 已从认证后的单页 Album Grid 扩展为可用浏览首版：专辑 / 动态 / 统计三页、搜索筛选排序、成员统计钻取、年份 → 月份定位、详情分享记录、Light-only Material 导航、Large/Compact Title、移动 Bottom Sheet 和桌面 Floating Sheet；本机 1280px、390px、320px 浏览器验收通过且无控制台错误。
+- Desktop Sync 已加入内存态 Sync Token 输入；远端地址只做健康检查，loopback 地址才允许自动托管本地 Worker。
+- `LocalWorkerHost` 已改为直接运行仓库内 Wrangler JavaScript 入口，避免 `pnpm.cmd` shim 提前退出后失去子进程所有权。真实 .NET 10 冒烟已验证自动迁移/启动/健康、复用已有 Worker、关闭只停止自有进程，测试后 8787 无残留。
+- `worker/wrangler.local.jsonc` 保存纯合成本地配置；`worker/wrangler.jsonc` 是生产配置并已绑定生产 D1。production preflight 会在 D1 ID 仍为占位符时拒绝部署。
+- 生产 D1 `albumrobot-prod` 已在 Asia Pacific 创建，真实 database ID 已写入 `worker/wrangler.jsonc`，远端 `0001_phase0.sql` migration 已成功应用；D1 当前没有真实群业务数据。
+- GitHub 远端当前仍只有两份规划文档；应用代码尚未提交或推送。Cloudflare 账户当前没有 AlbumRobot Worker，这是预期状态。
+- 首次部署顺序记录在 `docs/runbooks/cloudflare-first-deploy.md`：生产 D1、database ID 和远端 migration 已完成；下一步是完整验证与隐私复核、提交推送 GitHub、用 Cloudflare Workers Builds 连接仓库，最后设置 Runtime Secrets 并绑定正式域名。
+- 当前已创建空的远端 D1，但未创建 / 部署 Worker、未设置 Runtime Secrets、未修改 DNS、未推送 GitHub、未上传真实 QQ 数据。
+
+最新验证：
+
+- `pnpm format:check`、`privacy:scan`、`lint`、`typecheck`、`test`、`build` 全部通过；Worker 12/12、Web 8/8 测试通过。
+- `dotnet test apps/sync/AlbumRobot.Sync.sln --no-restore`：23/23 通过。
+- `dotnet build apps/sync/AlbumRobot.Sync.sln --no-restore`：0 warning / 0 error。
+- 合成本地 smoke：认证、accepted、duplicate、forbidden payload invalid、protected albums 全部通过。
+
+# O. Light-only PWA 可用首版与本地视觉验收（2026-08-15）
+
+- 用户最新指令覆盖原 Q35：只开发浅色外观，不开发 Dark，也不随系统切换；其余 Apple Music 视觉与 Motion 决策继续有效。该覆盖已记录在 `docs/adr/0003-light-only-apple-music-ui.md`。
+- Worker 新增受 Session 保护、按配置群隔离的专辑查询 / 详情、动态和统计 API；支持专辑名、艺术家、分享者昵称搜索，最近 / 首次 / 不同分享者人数排序，以及 UTC+8 自然周 / 月 / 年统计。
+- PWA 使用 React Query、Zustand 与 Motion：三标签保持独立滚动位置，搜索进入 Apple Search Mode，统计成员可钻取对应周期专辑，详情使用共享封面转场，浏览器 Back 优先关闭详情。
+- 动态页使用 60px 紧凑媒体行、Sticky 日期与“再次分享了”文案；时间定位使用年份 → 月份两级轻量 Sheet，月份只负责滚动定位，不改变时间线语义。
+- 视觉只使用浅色 token；移动端是半透明 Material Bottom Navigation 和 70～80vh Bottom Sheet，桌面端是 Navigation Rail 和可在背景继续选辑的 Floating Sheet；没有品牌 Splash。
+- 所有视觉测试只使用本地合成专辑、成员与分享记录。合成 seed 位于 `scripts/seed-visual-local.mjs`，不会读取或输出 QCE Raw 数据。
+- 浏览器已实际验收 1280px、390px 和最低 320px：三页布局、搜索 / 筛选 / 排序、统计钻取、详情打开 / 连续选辑 / Back、移动 Sheet 下拉关闭、两级日期定位、Compact Title、无横向溢出；控制台 0 error / 0 warning。
+- 当前仍是“可用浏览首版”，不是完整 Phase 4 / Phase 5：Feed cursor / windowing / pull-to-refresh / 新动态提示、离线缓存、PWA install、Admin UI、完整 Gesture Ownership Lock、真机 iOS / Android / QQ 内置浏览器录屏仍按计划保留，不能宣称全部 V1 完成。
+- 最新质量门：Worker 12/12、Web 8/8、.NET 23/23；.NET build 0 warning / 0 error；完整 pnpm 门禁、local smoke 与 `git diff --check` 通过。

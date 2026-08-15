@@ -1,0 +1,143 @@
+<Window x:Class="AlbumRobot.Sync.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AlbumRobot Sync"
+        Width="920"
+        Height="720"
+        MinWidth="760"
+        MinHeight="600"
+        Background="#F5F7FA"
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_OnLoaded"
+        Closed="Window_OnClosed">
+  <Grid Margin="28">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Grid Margin="0,0,0,20">
+      <StackPanel>
+        <TextBlock FontSize="30" FontWeight="SemiBold" Foreground="#16202A" Text="AlbumRobot Sync" />
+        <TextBlock Margin="0,6,0,0" Foreground="#66727E" Text="本地采集 · 脱敏识别 · 可恢复同步" />
+      </StackPanel>
+      <Border Width="230" Padding="12,8" HorizontalAlignment="Right" Background="#E8F4EC" CornerRadius="10">
+        <TextBlock Foreground="#217A42" Text="完整 QQ 数据只在本机处理" TextWrapping="Wrap" />
+      </Border>
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <Border Margin="0,0,0,14" Padding="18" Background="White" BorderBrush="#E2E7EC" BorderThickness="1" CornerRadius="14">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="150" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="#16202A" Text="本机连接" />
+            <TextBlock Grid.Column="1" Margin="14,3,0,0" Foreground="#66727E" Text="QCE 登录凭据只从本机安全配置读取，不写入 AlbumRobot。" TextWrapping="Wrap" />
+            <Button x:Name="RefreshGroupsButton" Grid.Column="2" Width="108" Height="32" Content="检查连接" Click="RefreshGroupsButton_OnClick" />
+
+            <TextBlock Grid.Row="1" Margin="0,16,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="QCE 地址" />
+            <TextBox x:Name="QceBaseUrlTextBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,12,0,0" Padding="8" />
+            <TextBlock x:Name="QceStatusText" Grid.Row="2" Grid.ColumnSpan="3" Margin="0,14,0,0" Foreground="#66727E" Text="等待检查 QCE" />
+          </Grid>
+        </Border>
+
+        <Border Margin="0,0,0,14" Padding="18" Background="White" BorderBrush="#E2E7EC" BorderThickness="1" CornerRadius="14">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="150" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.ColumnSpan="2" FontSize="17" FontWeight="SemiBold" Foreground="#16202A" Text="同步设置" />
+
+            <TextBlock Grid.Row="1" Margin="0,16,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="Worker API" />
+            <TextBox x:Name="WorkerBaseUrlTextBox" Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Padding="8" />
+
+            <TextBlock Grid.Row="2" Margin="0,12,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="Sync Token" />
+            <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,8,0,0">
+              <PasswordBox x:Name="SyncTokenPasswordBox" Padding="8" />
+              <TextBlock Margin="0,5,0,0" Foreground="#8A949E" FontSize="12" Text="远端上传需要；仅保留在本次运行内存中，不写入设置或日志。" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="3" Margin="0,12,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="目标群" />
+            <ComboBox x:Name="TargetGroupComboBox" Grid.Row="3" Grid.Column="1" Margin="0,8,0,0" Padding="6" DisplayMemberPath="DisplayName" SelectionChanged="TargetGroupComboBox_OnSelectionChanged" />
+
+            <TextBlock Grid.Row="4" Margin="0,12,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="扫描回看天数" />
+            <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,8,0,0">
+              <TextBox x:Name="LookbackDaysTextBox" Width="80" Padding="8" />
+              <TextBlock Margin="10,7,0,0" Foreground="#66727E" Text="天（使用重叠窗口避免漏消息）" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="5" Margin="0,12,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="本地数据目录" />
+            <TextBlock x:Name="DataDirectoryText" Grid.Row="5" Grid.Column="1" Margin="0,12,0,0" Foreground="#66727E" TextWrapping="Wrap" />
+          </Grid>
+        </Border>
+
+        <Border Margin="0,0,0,14" Padding="18" Background="White" BorderBrush="#E2E7EC" BorderThickness="1" CornerRadius="14">
+          <StackPanel>
+            <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="#16202A" Text="执行" />
+            <TextBlock Margin="0,8,0,0" Foreground="#66727E" Text="首次同步会先扫描并等待人工确认；之后可一键执行增量同步。" TextWrapping="Wrap" />
+            <WrapPanel Margin="0,16,0,0">
+              <Button x:Name="SyncButton" Width="132" Height="38" Margin="0,0,10,0" Background="#1F6FEB" Foreground="White" Content="立即同步" Click="SyncButton_OnClick" IsEnabled="False" />
+              <Button x:Name="ImportJsonButton" Width="132" Height="38" Margin="0,0,10,0" Content="导入 QCE JSON" Click="ImportJsonButton_OnClick" />
+              <Button x:Name="SubmitPendingButton" Width="132" Height="38" Margin="0,0,10,0" Content="上传待同步" Click="SubmitPendingButton_OnClick" />
+              <Button x:Name="OpenDataFolderButton" Width="132" Height="38" Content="打开数据目录" Click="OpenDataFolderButton_OnClick" />
+            </WrapPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Margin="0,0,0,14" Padding="18" Background="#16202A" CornerRadius="14">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Foreground="#AAB7C4" Text="扫描消息" />
+              <TextBlock x:Name="MessagesScannedText" Margin="0,5,0,0" FontSize="24" Foreground="White" Text="—" />
+            </StackPanel>
+            <StackPanel Grid.Column="1">
+              <TextBlock Foreground="#AAB7C4" Text="识别候选" />
+              <TextBlock x:Name="CandidatesText" Margin="0,5,0,0" FontSize="24" Foreground="White" Text="—" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Foreground="#AAB7C4" Text="已接受" />
+              <TextBlock x:Name="AcceptedText" Margin="0,5,0,0" FontSize="24" Foreground="White" Text="—" />
+            </StackPanel>
+            <StackPanel Grid.Column="3">
+              <TextBlock Foreground="#AAB7C4" Text="重复 / 无效" />
+              <TextBlock x:Name="DuplicatesInvalidText" Margin="0,5,0,0" FontSize="24" Foreground="White" Text="—" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Padding="18" Background="White" BorderBrush="#E2E7EC" BorderThickness="1" CornerRadius="14">
+          <StackPanel>
+            <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="#16202A" Text="运行状态" />
+            <TextBlock x:Name="PendingStatusText" Margin="0,10,0,0" Foreground="#66727E" Text="待同步：—" />
+            <TextBlock x:Name="StatusText" Margin="0,8,0,0" Foreground="#16202A" Text="准备就绪" TextWrapping="Wrap" />
+            <TextBlock x:Name="LastRunText" Margin="0,8,0,0" Foreground="#66727E" Text="尚未执行同步" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>

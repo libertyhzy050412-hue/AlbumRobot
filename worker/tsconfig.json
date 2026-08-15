@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types"],
+    "paths": {
+      "@albumrobot/contracts": ["../packages/contracts/src/index.ts"]
+    }
+  },
+  "include": ["src", "tests", "worker-configuration.d.ts"]
+}

@@ -1,11 +1,11 @@
 ---
 project: AlbumRobot
 document_role: executable-development-plan
-document_version: 1.0
+document_version: 1.1
 updated_at: 2026-08-15
-source_of_truth: PROJECT_PROGRESS_CODEX.md v5.0
+source_of_truth: PROJECT_PROGRESS_CODEX.md v5.1
 target_release: V1
-status: ready-for-implementation
+status: implementation-in-progress
 ---
 
 <!-- markdownlint-disable MD013 -->
@@ -45,10 +45,20 @@ Windows QQ
 ### 2.1 当前仓库状态
 
 - 产品和架构讨论已完成，Q1～Q219 均已有明确结论；
-- 当前尚无应用代码、数据库迁移、测试或部署配置；
+- 当前已建立 Phase 0 monorepo 基线、Worker/D1 migration、.NET 10 Sync solution、测试、CI 和隐私扫描；JSON-first MVP 与 PWA 浏览首版均已完成本地验证，完整产品功能仍按阶段推进；
+- 首版可用路径定为 `QCE 手工导出 JSON → Desktop Sync 本机解析 → SQLite Pending → Worker/D1 → 密码保护的 PWA`；真实 Direct 同卡片分支、跨扫描 ID 稳定性和历史 overlap 延后验证，但不取消；
+- Desktop Sync 已验证 loopback Worker 的自动迁移、启动、健康检查、健康实例复用和自有进程回收；远端 Worker 不可用时不会误启本地替代；
+- Asia Pacific 生产 D1 已创建并应用初始 migration，production preflight 已通过；Worker、Runtime Secrets 和正式域名尚未创建或绑定，应用代码尚未提交或推送；
 - 本机已有 .NET 10 SDK、Node.js 24、pnpm 11 和 Git；
 - Cloudflare Wrangler 作为项目本地开发依赖安装，不要求全局安装；
 - GitHub 仓库采用单一 monorepo，不拆分 Web、Worker 和 Sync 仓库。
+
+### 2.1a PWA 当前检查点
+
+- 已完成：Light-only Apple Music token、认证门、专辑 / 动态 / 统计、Search Mode、筛选排序、成员统计钻取、年份 → 月份定位、详情分享记录、Large → Compact Title、移动 Material Bottom Navigation / Bottom Sheet、桌面 Navigation Rail / Floating Sheet、Back 和 Reduced Motion 基线；
+- 已用纯合成数据完成 1280px、390px、320px 浏览器 QA；最低宽度无横向溢出，控制台无 error / warning；
+- Worker browse/detail/feed/stats API 与 UTC+8 周期边界已有测试；当前 Worker 12/12、Web 8/8、.NET 23/23；
+- 未完成项继续留在 Phase 4 / 5：Feed cursor / windowing、pull-to-refresh、新动态提示、离线缓存与清理、PWA 安装、Admin UI、完整手势所有权和真机浏览器 Motion QA。当前检查点不得标记为完整 Phase 4 或 Phase 5。
 
 ### 2.2 域名就绪状态
 
@@ -81,6 +91,8 @@ Windows QQ
   → D1 Album / Member / Share
   → PWA Album Grid 出现真实封面
 ```
+
+为尽快得到第一版可用版本，当前交付顺序先使用已验证的 QCE JSON Export 作为输入；Direct API 在取得同类真实卡片与重复扫描证据后再恢复为默认路径。这只调整里程碑顺序，不改变最终 V1 数据链路和隐私边界。
 
 在这条链路通过前，不投入完整 Admin、历史全量导入、复杂离线能力或 Motion 精修。
 
@@ -843,7 +855,7 @@ Cloudflare 探针：
 
 范围：
 
-- App Shell、Password Overlay、Light / Dark；
+- App Shell、Password Overlay、Light-only Theme；
 - 专辑页、排序、时间筛选、Search Mode、无限滚动；
 - 动态页、Sticky 日期、时间跳转、新动态提示、回到最新；
 - 统计页、Segment、成员 Drill-down；
@@ -1177,7 +1189,7 @@ Worker：
 - 专辑 / 动态 / 统计三页完整；
 - Search、排序、时间筛选、统计 Drill-down、时间跳转完整；
 - Bottom Sheet / Shared Element / Back / 滚动状态正确；
-- Light / Dark、Safe Area、Reduced Motion、宽屏布局完整；
+- Light-only Theme、Safe Area、Reduced Motion、宽屏布局完整；
 - 最近只读离线缓存和 Session 失效清理正确；
 - 安装入口、回前台刷新和外跳返回符合决策。
 

@@ -3,7 +3,7 @@ project: AlbumRobot
 document_role: executable-development-plan
 document_version: 1.1
 updated_at: 2026-08-15
-source_of_truth: PROJECT_PROGRESS_CODEX.md v5.1
+source_of_truth: PROJECT_PROGRESS_CODEX.md v5.2
 target_release: V1
 status: implementation-in-progress
 ---
@@ -48,7 +48,7 @@ Windows QQ
 - 当前已建立 Phase 0 monorepo 基线、Worker/D1 migration、.NET 10 Sync solution、测试、CI 和隐私扫描；JSON-first MVP 与 PWA 浏览首版均已完成本地验证，完整产品功能仍按阶段推进；
 - 首版可用路径定为 `QCE 手工导出 JSON → Desktop Sync 本机解析 → SQLite Pending → Worker/D1 → 密码保护的 PWA`；真实 Direct 同卡片分支、跨扫描 ID 稳定性和历史 overlap 延后验证，但不取消；
 - Desktop Sync 已验证 loopback Worker 的自动迁移、启动、健康检查、健康实例复用和自有进程回收；远端 Worker 不可用时不会误启本地替代；
-- Asia Pacific 生产 D1 已创建并应用初始 migration，production preflight 已通过；Worker、Runtime Secrets 和正式域名尚未创建或绑定，应用代码尚未提交或推送；
+- Asia Pacific 生产 D1 已创建并应用初始 migration；公开 GitHub `main`、Worker、四项 Runtime Secrets 和正式域名均已完成，production preflight 与线上认证边界通过；Cloudflare GitHub Builds 自动部署仍待连接；
 - 本机已有 .NET 10 SDK、Node.js 24、pnpm 11 和 Git；
 - Cloudflare Wrangler 作为项目本地开发依赖安装，不要求全局安装；
 - GitHub 仓库采用单一 monorepo，不拆分 Web、Worker 和 Sync 仓库。
@@ -62,13 +62,13 @@ Windows QQ
 
 ### 2.2 域名就绪状态
 
-2026-08-15 通过 Cloudflare DNS（`1.1.1.1`）和 Google DNS（`8.8.8.8`）交叉验证：
+2026-08-15 首次部署前后验证：
 
 - `rocknrollliberty.dpdns.org` 已正确委派给 Cloudflare nameserver：
   `andronicus.ns.cloudflare.com`、`clara.ns.cloudflare.com`；
-- `album.rocknrollliberty.dpdns.org` 当前为 NXDOMAIN，表示具体主机记录尚未创建；
-- 该状态不阻塞开发。生产部署时应把 Worker 配置为该 hostname 的 Custom Domain，由 Cloudflare 自动创建 DNS 记录并签发证书；
-- 在 Custom Domain 建立前无法验证该 hostname 的 HTTPS；部署后的验收必须重新检查全球 DNS、TLS 和大陆网络可达性。
+- `album.rocknrollliberty.dpdns.org` 部署前没有 A、AAAA 或 CNAME 冲突；
+- Worker Custom Domain 已建立并由 Cloudflare 提供 DNS / TLS；正式健康、静态资源、密码会话与 Batch 授权边界均通过；
+- 中国大陆不同运营商可达性、QQ 内置浏览器、iOS Safari 与 Android Chrome 真机行为仍待实测。
 
 ### 2.3 计划口径
 

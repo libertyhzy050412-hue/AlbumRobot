@@ -1,11 +1,11 @@
 ---
 project: AlbumRobot
 document_role: canonical-source-of-truth + codex-development-handoff
-document_version: 5.1
+document_version: 5.2
 updated_at: 2026-08-15
-project_stage: json-first-mvp-ui-v1-locally-validated
+project_stage: json-first-mvp-first-production-deploy-validated
 last_completed_grill_question: 219
-next_step: commit_push_then_connect_github_and_deploy_worker
+next_step: real_json_trial_then_connect_cloudflare_github_builds
 implementation_started: true
 primary_target: V1
 canonical_domain: album.rocknrollliberty.dpdns.org
@@ -2227,7 +2227,7 @@ product_design_complete = true
 architecture_baseline_complete = true
 grill_closed = true
 implementation_started = true
-next_step = create_production_d1_then_push_and_connect_github
+next_step = real_json_trial_then_connect_cloudflare_github_builds
 ```
 
 # L.1 QCE 本地化跟进（2026-08-15）
@@ -2255,13 +2255,13 @@ Codex 第一条工作指令：
 - 已完成可视化 WPF Desktop Sync：QCE 自动读取本机凭据、群列表/选择、回看天数、首次确认、JSON 导入降级、Pending 状态、Batch 上传和本地数据目录入口；
 - 已完成 PWA 浏览首版：Light-only Apple Music 视觉、专辑 / 动态 / 统计三页、Search Mode、筛选排序、统计钻取、分级日期定位、Shared Element 详情、移动 Bottom Sheet、桌面 Navigation Rail / Floating Sheet、Back 与 Reduced Motion 基线；
 - Direct API 的同卡片分支、ID 跨扫描稳定性和历史 overlap 仍为 UNVERIFIED；
-- 已完成 Cloudflare OAuth、创建 Asia Pacific 生产 D1 并应用 `0001_phase0.sql`；尚未部署 Worker、设置 Runtime Secrets、修改 DNS 或产生付费服务。
+- 已完成 Cloudflare OAuth、创建 Asia Pacific 生产 D1 并应用 `0001_phase0.sql`；Worker、四项 Runtime Secrets 与正式 Custom Domain 已部署并完成无真实数据的生产验收，未启用付费服务。
 
 合成数据 Vertical Slice 基线已完成；QCE envelope → RawQQMessage → Detector → SQLite Pending → Batch client 编排链路、JSON fallback 和桌面 UI 已完成编译与测试。当前先交付 JSON-first 可用版：真实 Direct 卡片与 overlap 证据延后，但不取消。
 
 # M. Codex 交接索引（2026-08-15）
 
-完整交接记录位于 `docs/CODEX_HANDOFF_2026-08-15.md`，包含当前工作树、QCE 本地安装、验证命令、隐私边界、首次部署顺序、剩余探针和下一对话可直接复制的提示词。生产 D1 与远端 migration 已完成；下一步提交推送 GitHub 并完成 Cloudflare Worker 首次部署，再继续 Direct 网易云卡片探针；不应重新讨论 Q1～Q219。
+完整交接记录位于 `docs/CODEX_HANDOFF_2026-08-15.md`，包含当前工作树、QCE 本地安装、验证命令、隐私边界、生产状态、剩余探针和下一对话可直接复制的提示词。生产 D1、Worker、Runtime Secrets、正式域名和 GitHub `main` 已完成；下一步先做一个极小 JSON-first 真实批次验收，再连接 Cloudflare GitHub Builds，并继续 Direct 网易云卡片探针；不应重新讨论 Q1～Q219。
 
 # N. JSON-first MVP 与首次部署准备（2026-08-15）
 
@@ -2274,9 +2274,9 @@ Codex 第一条工作指令：
 - `LocalWorkerHost` 已改为直接运行仓库内 Wrangler JavaScript 入口，避免 `pnpm.cmd` shim 提前退出后失去子进程所有权。真实 .NET 10 冒烟已验证自动迁移/启动/健康、复用已有 Worker、关闭只停止自有进程，测试后 8787 无残留。
 - `worker/wrangler.local.jsonc` 保存纯合成本地配置；`worker/wrangler.jsonc` 是生产配置并已绑定生产 D1。production preflight 会在 D1 ID 仍为占位符时拒绝部署。
 - 生产 D1 `albumrobot-prod` 已在 Asia Pacific 创建，真实 database ID 已写入 `worker/wrangler.jsonc`，远端 `0001_phase0.sql` migration 已成功应用；D1 当前没有真实群业务数据。
-- GitHub 远端当前仍只有两份规划文档；应用代码尚未提交或推送。Cloudflare 账户当前没有 AlbumRobot Worker，这是预期状态。
-- 首次部署顺序记录在 `docs/runbooks/cloudflare-first-deploy.md`：生产 D1、database ID 和远端 migration 已完成；下一步是完整验证与隐私复核、提交推送 GitHub、用 Cloudflare Workers Builds 连接仓库，最后设置 Runtime Secrets 并绑定正式域名。
-- 当前已创建空的远端 D1，但未创建 / 部署 Worker、未设置 Runtime Secrets、未修改 DNS、未推送 GitHub、未上传真实 QQ 数据。
+- 公开 GitHub 仓库的应用代码已通过 PR 合入 `main`；合并前和合并后 GitHub Actions 的 Node / .NET 任务均通过。Cloudflare GitHub Builds 尚未连接，当前生产发布入口是经过预检的 Wrangler CLI。
+- 首次部署顺序记录在 `docs/runbooks/cloudflare-first-deploy.md`：生产 D1、database ID、远端 migration、Worker、Runtime Secrets 和正式 Custom Domain 均已完成；GitHub Builds 连接保留为下一部署自动化步骤。
+- 正式入口 `https://album.rocknrollliberty.dpdns.org` 已通过 DNS / TLS、health、静态资源、错误 / 正确密码、Session Cookie、受保护读取、无 Token 401 与带 Token 空批次验收。尚未上传真实 QQ 或专辑业务数据。
 
 最新验证：
 
@@ -2296,3 +2296,13 @@ Codex 第一条工作指令：
 - 浏览器已实际验收 1280px、390px 和最低 320px：三页布局、搜索 / 筛选 / 排序、统计钻取、详情打开 / 连续选辑 / Back、移动 Sheet 下拉关闭、两级日期定位、Compact Title、无横向溢出；控制台 0 error / 0 warning。
 - 当前仍是“可用浏览首版”，不是完整 Phase 4 / Phase 5：Feed cursor / windowing / pull-to-refresh / 新动态提示、离线缓存、PWA install、Admin UI、完整 Gesture Ownership Lock、真机 iOS / Android / QQ 内置浏览器录屏仍按计划保留，不能宣称全部 V1 完成。
 - 最新质量门：Worker 12/12、Web 8/8、.NET 23/23；.NET build 0 warning / 0 error；完整 pnpm 门禁、local smoke 与 `git diff --check` 通过。
+
+# P. JSON-first MVP 首次生产部署（2026-08-15）
+
+- 公开 GitHub 仓库已保留公开可见，JSON-first V1 已合入 `main`；GitHub Actions 在 PR 与 `main` push 上均通过 Node / .NET 全部检查。
+- CI 暴露并修复了两项本机缓存会掩盖的跨平台问题：隐私扫描改用 `fileURLToPath` 解析仓库根目录；根构建显式先生成 Web 静态资源，再执行 Worker dry-run。
+- Cloudflare Worker `albumrobot` 已通过 Wrangler CLI 首次部署；四项 Runtime Secrets 已加密写入 Cloudflare。用户需要恢复的生产凭据另存于本机 Windows Credential Locker 的 `AlbumRobot Production` 项，不进入 Git、日志或对话。
+- `worker/wrangler.jsonc` 固化 `workers_dev=false`、`preview_urls=false` 与正式 Custom Domain，避免 Preview 分支误用生产 D1；正式入口为 `https://album.rocknrollliberty.dpdns.org`。
+- 正式域名已验证：`GET /api/health` 为 `ok=true`、`configured=true`；首页为 HTML；错误密码为 401；正确密码建立带 `HttpOnly`、`Secure`、`SameSite=Lax` 的 Session；专辑 API 可读；无 Sync Token 的 Batch 为 401；带正确 Token 的空批次为 200。
+- 上述生产验收只使用空批次，没有上传 Raw QQ、真实消息、真实成员、聊天原文或专辑业务数据。第一次真实 JSON Export 极小批次仍待用户可操作 QCE 时通过 Desktop UI 完成。
+- Cloudflare Dashboard 的 GitHub Builds 连接因控制台页面自动化连续超时而没有提交；这不影响当前 CLI 发布的首版。下一步应在 Dashboard 连接公开仓库 `main`，使用 Node 24、pnpm 11.19.0，并保持非生产分支 Preview 关闭。

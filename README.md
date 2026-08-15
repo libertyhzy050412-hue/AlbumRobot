@@ -6,7 +6,7 @@ AlbumRobot is a local-first QQ album archive for one QQ group. The V1 data path 
 Windows QQ → QCE → AlbumRobot Sync → Cloudflare Worker / D1 → React PWA
 ```
 
-The repository now contains a deployable JSON-first MVP baseline: QCE JSON is parsed locally into a recoverable Pending queue, the desktop client uploads only normalized candidates with a Sync Token, and the password-protected React app provides a light-only Apple Music-style album, feed, stats, and album-detail browsing experience from a same-origin Worker/D1 deployment. Direct QCE scanning remains an enhancement and does not block the first usable release. The empty production D1 and initial migration now exist, but no production Worker deployment, raw QQ upload, or paid Cloudflare service is enabled.
+The repository now contains a deployed JSON-first MVP baseline: QCE JSON is parsed locally into a recoverable Pending queue, the desktop client uploads only normalized candidates with a Sync Token, and the password-protected React app provides a light-only Apple Music-style album, feed, stats, and album-detail browsing experience from a same-origin Worker/D1 deployment. Direct QCE scanning remains an enhancement and does not block the first usable release. The production Worker is available at `https://album.rocknrollliberty.dpdns.org`; no raw QQ data has been uploaded and no paid Cloudflare service is enabled.
 
 ## Repository layout
 
@@ -82,9 +82,9 @@ pnpm probe:phase0
 
 The safe Phase 0 probe never prints or persists the QCE access token and does not read QQ data. For an intentional live local sync, use the visual Desktop Sync window and follow [the Desktop Sync runbook](docs/runbooks/desktop-sync.md); it reads QQ data only on the local machine.
 
-## First Cloudflare deployment
+## Cloudflare production deployment
 
-Do not connect the GitHub repository from the Cloudflare dashboard until the production D1 ID replaces the explicit placeholder in `worker/wrangler.jsonc`, all runtime Secrets are ready, the full validation suite passes, and the application code has been intentionally committed and pushed. Follow [the first-deploy runbook](docs/runbooks/cloudflare-first-deploy.md). The production Worker serves both `/api/*` and the built React SPA; a separate Pages project or static-file upload is not required.
+Production D1, runtime Secrets, Worker, and the custom domain are configured. The current recoverable release command is `pnpm deploy:worker`; Cloudflare GitHub Builds remains a follow-up automation step. Follow [the first-deploy runbook](docs/runbooks/cloudflare-first-deploy.md) and do not create a separate Pages project, static-file upload, second Worker, or second D1. The production Worker serves both `/api/*` and the built React SPA.
 
 ## Privacy boundary
 
@@ -92,4 +92,4 @@ Complete QQ messages, ordinary chat text, unrelated images, QCE tokens, password
 
 ## Current external baseline
 
-QCE `v6.2.3` Windows x64 is pinned and installed locally; the package hash, local path, verified full-mode envelope, and remaining Direct-card probe are recorded in `docs/probes/qce.md`. Do not silently follow `latest`. Cloudflare Free/D1 limits and domain/TLS reachability must be rechecked before any production deployment.
+QCE `v6.2.3` Windows x64 is pinned and installed locally; the package hash, local path, verified full-mode envelope, and remaining Direct-card probe are recorded in `docs/probes/qce.md`. Do not silently follow `latest`. Production DNS/TLS and authentication boundaries have been checked; Cloudflare Free/D1 usage and mainland-China/mobile-browser reachability still require ongoing observation.

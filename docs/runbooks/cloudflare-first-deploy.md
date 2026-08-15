@@ -2,9 +2,13 @@
 
 本 runbook 用于把 JSON-first MVP 部署为同源的 Cloudflare Worker + D1 + React SPA。完整 QCE JSON、聊天正文、QCE token 和桌面本地数据库都不得进入 GitHub 或 Cloudflare。
 
-## 当前不要直接连接仓库的原因
+## 当前生产状态（2026-08-15）
 
-远端 GitHub `main` 目前只有规划文档，应用代码仍在本机工作树中。生产 D1、`worker/wrangler.jsonc` 的 database ID 和初始远端 migration 已于 2026-08-15 完成；在代码完成隐私复核、提交并推送前连接仓库，Cloudflare 构建仍只会得到旧文档。
+- 公开 GitHub 仓库的应用代码已合入 `main`，PR 与 `main` push 的 Node / .NET GitHub Actions 均通过；
+- 生产 D1、database ID、初始远端 migration、Worker、四项 Runtime Secrets 和正式 Custom Domain 均已完成；
+- 正式入口为 `https://album.rocknrollliberty.dpdns.org`，已经通过无真实数据的健康、认证、读取和空 Batch 验收；
+- Cloudflare GitHub Builds 尚未连接。当前可恢复的发布路径是仓库根目录运行 `pnpm deploy:worker`；连接 GitHub 后再把它切换为自动生产发布路径；
+- `workers.dev` 只用于首次部署验收，绑定正式域名后已显式关闭；Preview URL 与非生产分支部署也保持关闭，避免误用生产 D1。
 
 ## 1. 本地发布门
 
@@ -60,6 +64,8 @@ https://github.com/libertyhzy050412-hue/AlbumRobot
 
 在“创建 Worker”页面选择 **Continue with GitHub**，然后选择 `libertyhzy050412-hue/AlbumRobot`。
 
+当前此项仍待完成；不要另建 Hello World Worker、Pages 项目或第二个 AlbumRobot Worker。应把现有 `albumrobot` Worker 连接到该仓库。
+
 建议构建设置：
 
 ```text
@@ -93,9 +99,11 @@ SYNC_TOKEN        # 独立高熵随机值，至少 32 bytes
 
 四项不得互相复用，也不得写入 GitHub、构建变量、截图、日志或聊天。Secret 配置完成后重新触发一次生产部署。
 
+当前四项已配置为 Cloudflare 加密 Secret。可恢复副本只保存在本机 Windows Credential Locker 的 `AlbumRobot Production` 项；不得为了排错把值复制到日志或对话。
+
 ## 6. 部署验收
 
-先使用 Cloudflare 提供的 `workers.dev` 地址验收：
+首次部署已先使用 Cloudflare 提供的 `workers.dev` 地址验收；绑定正式域名后 `workers.dev` 已关闭。以下 1～4 已在 `workers.dev` 和正式域名通过，带正确 Token 的空批次也已返回 200：
 
 1. `GET /api/health` 返回 `ok: true`、`configured: true`；
 2. 访问根路径显示群共享密码覆盖层；
@@ -107,13 +115,13 @@ SYNC_TOKEN        # 独立高熵随机值，至少 32 bytes
 
 ## 7. 绑定正式域名
 
-在 Worker 的 **Settings → Domains & Routes → Add → Custom Domain** 中添加：
+Custom Domain 已完成，并固化在 `worker/wrangler.jsonc`。灾难恢复或新账户重建时，可在 Worker 的 **Settings → Domains & Routes → Add → Custom Domain** 中添加：
 
 ```text
 album.rocknrollliberty.dpdns.org
 ```
 
-先确认该 hostname 没有冲突的 CNAME。绑定完成并验证 TLS 后，把 Desktop Sync 的 Worker API 改为：
+首次绑定前已确认该 hostname 没有冲突的 A、AAAA 或 CNAME；绑定完成后 DNS、TLS 与 `/api/health` 已通过。Desktop Sync 的 Worker API 应设为：
 
 ```text
 https://album.rocknrollliberty.dpdns.org

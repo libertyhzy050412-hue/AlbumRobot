@@ -108,11 +108,11 @@ pnpm smoke:local
 
 1. 读取 `PROJECT_PROGRESS_CODEX.md`、`DEVELOPMENT_PLAN.md`、本文件和 `docs/probes/qce.md`。
 2. 检查 `git status --short`、QCE 目录、40653 端口和 QQ 进程；保留所有未提交实现，不做破坏性清理。
-3. 生产 D1、真实 database ID 和远端 migration 已完成；不要把 Cloudflare token 或 Runtime Secrets 写入仓库或对话。
-4. 再跑完整质量门禁和隐私复核，确认 Git staged 内容不含 `qce-data/`、本地数据库、Raw QQ、token、密码、cookie、真实标识或聊天原文，然后有意提交并推送现有 monorepo。
-5. 在 Cloudflare 选择 **Continue with GitHub** 连接现有 AlbumRobot 仓库；Root directory 为 `/`，Build command 为 `pnpm --filter @albumrobot/web build`，Deploy command 为 `pnpm --dir worker run deploy`，Build Variables 设置 `NODE_VERSION=24` 和 `PNPM_VERSION=11.19.0`。
-6. 在 Cloudflare 配置 `PRIMARY_GROUP_ID`、`GROUP_PASSWORD`、`SESSION_SECRET`、`SYNC_TOKEN` 四个加密 Runtime Secrets；先在 `workers.dev` 验证认证、同步和读取，再绑定正式 Custom Domain。
-7. 第一版日常使用按 JSON-first runbook：QCE 手工导出 JSON，在 Desktop Sync 导入并上传待同步；完整 QQ 数据仍只在本机处理。
+3. 生产 D1、真实 database ID、远端 migration、Worker、四项 Runtime Secrets 和正式 Custom Domain 已完成；不要重复创建资源，也不要把 Cloudflare token 或 Runtime Secrets 写入仓库或对话。
+4. 公开 GitHub 仓库的应用代码已合入 `main`，PR 与 `main` push 的 Node / .NET Actions 均通过；当前分支只用于固化生产路由和部署状态文档。
+5. 第一版日常使用按 JSON-first runbook：把 Desktop Sync 的 Worker API 设为 `https://album.rocknrollliberty.dpdns.org`，从 Windows Credential Locker 取得 Sync Token，在 QCE 手工导出 JSON 后导入并上传一个极小批次；完整 QQ 数据仍只在本机处理。
+6. 极小真实批次验收后，在 Cloudflare 选择 **Continue with GitHub** 连接现有 AlbumRobot 仓库；Root directory 为 `/`，Build command 为 `pnpm --filter @albumrobot/web build`，Deploy command 为 `pnpm --dir worker run deploy`，Build Variables 设置 `NODE_VERSION=24` 和 `PNPM_VERSION=11.19.0`。
+7. GitHub Builds 连接前，当前可恢复的生产发布命令是仓库根目录的 `pnpm deploy:worker`；不要另建 Hello World Worker、Pages 项目或第二个 D1。
 8. MVP 可用后再继续 Direct 同卡片、跨扫描 ID 和历史 overlap 探针；仅记录脱敏字段形状并补充合成测试。
 9. 每个阶段继续汇报：已完成变更、验证结果、风险、下一步；只有产品边界、部署成本、隐私、核心数据模型或目标不可行时询问用户。
 
@@ -138,7 +138,7 @@ pnpm smoke:local
 
 不要重新讨论 Q1-Q219。沿用已有未提交实现，不执行 git reset --hard、git checkout -- 或删除未提交文件。
 
-当前重点是完成 JSON-first MVP 的首次生产部署。生产 D1 与远端 migration 已完成；请先检查 git status、QCE 本地目录、40653/8787 端口、QQ/QCE/AlbumRobot 进程，不要假设上轮自动化没有留下进程。
+当前重点是完成 JSON-first MVP 的首个真实极小批次验收。生产 D1、Worker、四项 Runtime Secrets、正式 Custom Domain 与 GitHub main 已完成；请先检查 git status、QCE 本地目录、40653/8787 端口、QQ/QCE/AlbumRobot 进程，不要假设上轮自动化没有留下进程。
 
 已完成并保留的实现：Phase 0 monorepo、Worker/D1 本地基线、隐私边界、合成 Vertical Slice、可视化 WPF Desktop Sync V1、QCE Direct/JSON Normalizer、SQLite Pending、Batch 上传、Worker/PWA 认证和生产部署门禁。首版路径是 QCE 手工导出 JSON → Desktop Sync → Worker/D1 → 密码保护 PWA；Direct 同 card 分支、跨扫描 ID 稳定性和历史 overlap 后续再验证。
 
@@ -154,10 +154,10 @@ pnpm smoke:local
 - 8787 在无人使用时应关闭。Desktop loopback 自动托管已经验收，不要再要求用户另开 Worker 终端；生产 Desktop 直接使用远端 Cloudflare Worker。
 
 下一步必须按顺序：
-1. 阅读 `docs/runbooks/cloudflare-first-deploy.md`，确认 GitHub 和 Cloudflare Workers Builds 的剩余顺序；生产 D1、database ID 和远端 migration 不要重复创建。
-2. 完整验证与隐私复核通过后，提交并推送现有 monorepo，再在 Cloudflare 选择 Continue with GitHub，并显式设置 Node 24 / pnpm 11.19.0；不要使用 Hello World、静态文件上传或另建 Pages 项目。
-3. 不要在对话或 Git 中输出凭据和 secrets。
-4. 设置四项加密 Runtime Secrets，在 workers.dev 完成 JSON-first 真机验收后再绑定正式域名。
+1. 阅读 `docs/runbooks/cloudflare-first-deploy.md`，确认现有生产状态；生产 D1、database ID、远端 migration、Worker、Secrets 和正式域名不要重复创建。
+2. 把 Desktop Sync 的 Worker API 设为 `https://album.rocknrollliberty.dpdns.org`，从 Windows Credential Locker 取得 Sync Token；只导入 QCE 手工导出的目标群 JSON，并先上传一个极小标准化批次。
+3. 不要在对话或 Git 中输出凭据和 secrets，不要上传 Raw QQ、普通聊天正文或完整 JSON。
+4. 真实极小批次通过后，在 Cloudflare 为现有 `albumrobot` Worker 连接公开 GitHub 仓库 `main`，显式设置 Node 24 / pnpm 11.19.0，关闭 Preview；不要新建 Hello World、Pages 项目、Worker 或 D1。
 5. MVP 可用后才继续 Direct 同卡片、跨扫描 ID 和历史 overlap 探针。
 
 每阶段汇报：已完成变更、验证结果、风险、下一步。只有产品边界、部署成本、隐私、核心数据模型或目标不可行时才提问。
@@ -204,3 +204,12 @@ pnpm smoke:local
 - 使用 `scripts/seed-visual-local.mjs` 生成纯合成本地视觉数据；没有读取、输出或提交真实 QQ/QCE 内容。
 - 浏览器实测覆盖 1280px、390px 和 320px；移动两列 Grid、Bottom Navigation、Feed、Stats、Bottom Sheet 下拉关闭与桌面 Floating Sheet 均通过；控制台 0 error / 0 warning，无横向溢出。
 - 当前不是完整 Phase 4 / 5。Feed 分页 / windowing、pull-to-refresh、新动态提示、离线缓存、PWA install、Admin UI、完整手势所有权和 iOS / Android / QQ 内置浏览器真机 QA 仍待后续。
+
+## 10. 首次生产部署增量
+
+- 公开 GitHub 仓库已保留公开状态，JSON-first V1 经 PR 合入 `main`；PR 与 `main` push 的 GitHub Actions 均通过 Node / .NET 检查。
+- GitHub CI 首轮发现并修复 Linux 隐私扫描路径与并行构建静态资源竞态；修复后的 Ubuntu Node 与 Windows .NET 任务均通过。
+- 生产 D1、远端 migration、Worker、四项加密 Runtime Secrets 和正式 Custom Domain 已完成。正式入口为 `https://album.rocknrollliberty.dpdns.org`，`workers.dev` 与 Preview URL 已显式关闭。
+- 正式入口已通过 health、HTML、错误 / 正确密码、受保护 Session、专辑读取、无 Token 401 和带 Token 空批次 200；Session Cookie 具备 `HttpOnly`、`Secure`、`SameSite=Lax`。
+- 生产凭据没有进入 Git、日志或对话；用户需要恢复的值保存在本机 Windows Credential Locker 的 `AlbumRobot Production` 项。
+- 尚未上传任何真实 QQ、成员、消息或专辑业务数据。下一步是 Desktop UI 的一个极小 JSON-first 真实批次，再连接 Cloudflare GitHub Builds。

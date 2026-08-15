@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @albumrobot/web build && pnpm --filter @albumrobot/worker build",
     "deploy:worker": "pnpm --filter @albumrobot/web build && pnpm --dir worker deploy",
     "dev:web": "pnpm --filter @albumrobot/web dev",
     "dev:worker": "pnpm --filter @albumrobot/worker dev",

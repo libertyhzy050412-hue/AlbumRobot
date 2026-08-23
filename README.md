@@ -53,7 +53,7 @@ Run the visual Desktop Sync window on Windows:
 dotnet run --project apps/sync/src/AlbumRobot.Sync.App/AlbumRobot.Sync.App.csproj
 ```
 
-The window reads QCE credentials from the current user's local QCE configuration, lists groups, imports QCE JSON locally, and uploads only normalized pending candidates. A loopback Worker is migrated and started automatically when needed; a remote Cloudflare URL is only health-checked and is never replaced by a local process. The remote Sync Token stays in process memory and is not written to settings. See [the Desktop Sync runbook](docs/runbooks/desktop-sync.md).
+The window reads QCE credentials from the current user's local QCE configuration, lists groups, imports QCE JSON locally, and uploads only normalized pending candidates. Production Desktop Sync sends both immediate and pending uploads directly to the configured remote Cloudflare Worker; it does not start or migrate a local Worker. The remote Sync Token stays in process memory and is persisted only in the current Windows user's Credential Manager. See [the Desktop Sync runbook](docs/runbooks/desktop-sync.md).
 
 The API exposes public health, rate-limited group-password sessions, protected album browse/detail/feed/stats, and Sync-Token-protected batch endpoints. Static and API responses use restrictive security headers. The Web app proxies `/api` to `http://127.0.0.1:8787` during development. Local-only credentials in `worker/wrangler.local.jsonc` are synthetic and must never be copied to production.
 

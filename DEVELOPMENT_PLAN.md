@@ -48,7 +48,10 @@ Windows QQ
 - 当前已建立 Phase 0 monorepo 基线、Worker/D1 migration、.NET 10 Sync solution、测试、CI 和隐私扫描；JSON-first MVP 与 PWA 浏览首版均已完成本地验证，完整产品功能仍按阶段推进；
 - 首版可用路径定为 `QCE 手工导出 JSON → Desktop Sync 本机解析 → SQLite Pending → Worker/D1 → 密码保护的 PWA`；真实 Direct 同卡片分支、跨扫描 ID 稳定性和历史 overlap 延后验证，但不取消；
 - Desktop Sync 已验证 loopback Worker 的自动迁移、启动、健康检查、健康实例复用和自有进程回收；远端 Worker 不可用时不会误启本地替代；
+- 当前产品使用口径覆盖为远端 Worker only：立即同步与上传待同步统一直连 Cloudflare Batch API，桌面启动不自动刷新 QCE/Worker，也不启动本地 Worker；`LocalWorkerHost` 仅保留为开发/测试代码接缝；
 - Asia Pacific 生产 D1 已创建并应用初始 migration；公开 GitHub `main`、Worker、四项 Runtime Secrets 和正式域名均已完成，production preflight 与线上认证边界通过；Cloudflare GitHub Builds 自动部署仍待连接；
+- 一份真实 QCE JSON Export 已通过 Desktop UI 在本机解析并把标准化候选写入生产 D1，受保护 PWA API 已确认可读；Raw QQ、聊天正文和完整 JSON 未上传，真实标识与内容未进入公开文档；
+- Desktop 的 Pending 提交已改为一次操作自动分批清空并累计回执，超过 Batch 上限时不再要求用户重复点击；
 - 本机已有 .NET 10 SDK、Node.js 24、pnpm 11 和 Git；
 - Cloudflare Wrangler 作为项目本地开发依赖安装，不要求全局安装；
 - GitHub 仓库采用单一 monorepo，不拆分 Web、Worker 和 Sync 仓库。
@@ -57,7 +60,7 @@ Windows QQ
 
 - 已完成：Light-only Apple Music token、认证门、专辑 / 动态 / 统计、Search Mode、筛选排序、成员统计钻取、年份 → 月份定位、详情分享记录、Large → Compact Title、移动 Material Bottom Navigation / Bottom Sheet、桌面 Navigation Rail / Floating Sheet、Back 和 Reduced Motion 基线；
 - 已用纯合成数据完成 1280px、390px、320px 浏览器 QA；最低宽度无横向溢出，控制台无 error / warning；
-- Worker browse/detail/feed/stats API 与 UTC+8 周期边界已有测试；当前 Worker 12/12、Web 8/8、.NET 23/23；
+- Worker browse/detail/feed/stats API 与 UTC+8 周期边界已有测试；当前 Worker 13/13、Web 8/8、.NET 27/27；
 - 未完成项继续留在 Phase 4 / 5：Feed cursor / windowing、pull-to-refresh、新动态提示、离线缓存与清理、PWA 安装、Admin UI、完整手势所有权和真机浏览器 Motion QA。当前检查点不得标记为完整 Phase 4 或 Phase 5。
 
 ### 2.2 域名就绪状态
@@ -1257,3 +1260,11 @@ Worker：
 - [.NET 10 概览](https://learn.microsoft.com/dotnet/core/whats-new/dotnet-10/overview) 与 [.NET 生命周期](https://learn.microsoft.com/lifecycle/products/microsoft-net-and-net-core)：.NET 10 LTS 支持基线。
 
 外部平台会变化。上述事实在 Phase 0、生产部署前和任何重大升级前都必须重新验证。
+
+## 23. JSON-first 识别器生产不变量（2026-08-15）
+
+- 裸 `id` 不是网易云专辑证据。只有 `album_id`、`albumId`、`netease_album_id` 等明确专辑字段，或受支持网易云域名中的 album URL 才能建立 Album 身份。
+- QCE 普通元素中的表情、贴纸、回复引用等通用 ID 必须被拒绝；合成回归同时覆盖“无网易云证据时拒绝”和“通用 ID 与有效 URL 并存时优先有效 URL”。
+- `Untitled` 与 `Unknown artist` 是本地缺失元数据占位值，不得在 Album upsert 时覆盖云端已有的完整元数据；有效的新元数据仍可升级旧占位值。
+- 生产误报清理必须先取得 D1 Time Travel 恢复点，再用只读聚合锁定精确数量；数量不一致时停止，禁止扩大删除条件。
+- 本轮已按上述规则清理历史误报，并由 D1 聚合及密码会话 API 双重确认未知 / 缺封面记录为 0。Raw QQ 与真实聊天数据仍只在本机处理。

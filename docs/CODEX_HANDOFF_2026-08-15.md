@@ -1,7 +1,7 @@
 # AlbumRobot Codex 交接记录
 
 更新时间：2026-08-15（Asia/Hong_Kong）
-交接状态：`JSON-first MVP + light-only browse UI locally validated; production D1 and GitHub/Cloudflare deployment pending`
+交接状态：`JSON-first real production path validated; GitHub Builds automation and Direct probes pending`
 
 这份文件用于下一个 Codex 对话恢复工作上下文。它不替代产品决策文档：
 
@@ -20,7 +20,7 @@
 - 可视化 WPF Desktop Sync 已完成：本机 QCE 凭据自动读取、群列表/群选择、回看窗口、首次同步确认、JSON 导入降级、Pending 计数、Batch 上传和本地数据目录入口均由同一窗口操作。
 - Desktop Sync 已通过真实 .NET 10 进程冒烟：loopback Worker 可自动迁移、启动并通过健康检查，可复用已有健康 Worker，窗口关闭只回收本次自有进程；用户不需要另开 Worker 终端。
 - Worker 已加入共享密码 Session、登录限速和独立 Sync Token，Web Album API 与 Batch API 均受保护；生产 secrets 不进入仓库。
-- Cloudflare OAuth、Asia Pacific 生产 D1 和初始远端 migration 已完成；当前没有 Worker 公网部署、Runtime Secrets 或 DNS 变更，没有产生付费服务、没有推送应用代码，也没有上传 QQ 原始数据。
+- Cloudflare OAuth、Asia Pacific 生产 D1、远端 migration、Worker、Runtime Secrets 与正式 Custom Domain 已完成；JSON-first 真实生产链路已脱敏验收，没有产生付费服务，也没有上传 QQ 原始数据。
 
 ## 2. 已完成的工程变更
 
@@ -52,7 +52,7 @@
 - `SyncSettings.cs` / `SyncRuntime.cs`：本地设置、QCE 凭据发现、SQLite 运行时和无 QCE 的 JSON-only fallback。
 - `LocalWorkerHost.cs`：仅对 loopback Worker 自动迁移/启动；直接运行仓库内 Node/Wrangler 入口并持有进程树，远端地址不可用时不会启动本地替代。
 - `apps/sync/src/AlbumRobot.Sync.App`：可视化 WPF Sync 窗口；所有完整 QQ 数据仍只在本机处理。
-- `apps/sync/tests`：23 个 .NET 测试覆盖 Detector、Normalizer、Scanner、Pending、Batch、Orchestrator、JSON 导入、桌面运行时、Worker 托管和 QCE HTTP 边界。
+- `apps/sync/tests`：35 个 .NET 测试覆盖 Detector、Normalizer、Scanner、Pending、Batch、Orchestrator、JSON 导入、桌面运行时、Worker 托管、QCE HTTP 边界和 Sync Token 安全存储目标。
 
 ## 3. QCE 本地状态
 
@@ -87,15 +87,22 @@ JSON Export 的网易云专辑卡字段已在本机检查并用合成数据覆�
 - `pnpm privacy:scan`
 - `pnpm lint`
 - `pnpm typecheck`
-- `pnpm test`：Worker 12/12、Web 8/8 测试通过
+- `pnpm test`：Worker 13/13、Web 8/8 测试通过
 - `pnpm build`：Vite build + Wrangler deploy dry-run 通过
 - `dotnet restore apps/sync/AlbumRobot.Sync.sln --locked-mode`
 - `dotnet build apps/sync/AlbumRobot.Sync.sln --no-restore`：0 warning / 0 error
-- `dotnet test apps/sync/AlbumRobot.Sync.sln --no-restore`：23/23 通过
+- `dotnet test apps/sync/AlbumRobot.Sync.sln --no-restore`：35/35 通过
 - `pnpm --filter @albumrobot/worker db:migrate:local`
 - 启动 Worker 后 `pnpm smoke:local`：认证、accepted、replay duplicate、forbidden payload invalid、受保护 albums 全部通过
 - 真实 .NET 10 Worker 托管冒烟：无 8787 自动迁移/启动/health；健康实例复用且不取得所有权；释放后只停止自有进程并关闭 8787
 - `git diff --check`：通过（仅有 Windows 换行提示）
+
+## 4.1 上传 Token 自动复用（2026-08-16）
+
+- `SyncTokenCredentialStore` 已接入 Desktop Sync：远端 Worker 的 Sync Token 首次输入后，按 Worker 地址隔离写入当前 Windows 用户的 Credential Manager；后续点击“上传待同步”自动读取。
+- 401 会删除对应 Worker 地址的本机缓存，允许用户重新输入；loopback Worker 继续使用合成本地 token，不写入凭据管理器。
+- 本机没有可直接读取的现成 AlbumRobot production token；首次使用正式域名仍需要用户在 Sync Token 框输入一次。Token 不写入设置、SQLite、日志、URL、Git 或对话。
+- 此次验证：Credential Manager 临时回环读写测试通过并已清理；.NET 35/35、build 0 warning / 0 error；完整 pnpm 门禁和 `git diff --check` 通过。
 
 local smoke 需要先启动 Worker：
 
@@ -110,8 +117,8 @@ pnpm smoke:local
 2. 检查 `git status --short`、QCE 目录、40653 端口和 QQ 进程；保留所有未提交实现，不做破坏性清理。
 3. 生产 D1、真实 database ID、远端 migration、Worker、四项 Runtime Secrets 和正式 Custom Domain 已完成；不要重复创建资源，也不要把 Cloudflare token 或 Runtime Secrets 写入仓库或对话。
 4. 公开 GitHub 仓库的应用代码已合入 `main`，PR 与 `main` push 的 Node / .NET Actions 均通过；当前分支只用于固化生产路由和部署状态文档。
-5. 第一版日常使用按 JSON-first runbook：把 Desktop Sync 的 Worker API 设为 `https://album.rocknrollliberty.dpdns.org`，从 Windows Credential Locker 取得 Sync Token，在 QCE 手工导出 JSON 后导入并上传一个极小批次；完整 QQ 数据仍只在本机处理。
-6. 极小真实批次验收后，在 Cloudflare 选择 **Continue with GitHub** 连接现有 AlbumRobot 仓库；Root directory 为 `/`，Build command 为 `pnpm --filter @albumrobot/web build`，Deploy command 为 `pnpm --dir worker run deploy`，Build Variables 设置 `NODE_VERSION=24` 和 `PNPM_VERSION=11.19.0`。
+5. 第一版日常使用按 JSON-first runbook：把 Desktop Sync 的 Worker API 设为 `https://album.rocknrollliberty.dpdns.org`，首次在 Sync Token 中输入一次后由当前 Windows 用户的 Credential Manager 按 Worker 地址安全保存，在 QCE 手工导出 JSON 后导入并点击“上传待同步”；完整 QQ 数据仍只在本机处理，超过单批上限会自动连续提交。
+6. JSON-first 真实生产路径已经验收；下一部署自动化步骤是在 Cloudflare 选择 **Continue with GitHub** 连接现有 AlbumRobot 仓库。Root directory 为 `/`，Build command 为 `pnpm --filter @albumrobot/web build`，Deploy command 为 `pnpm --dir worker run deploy`，Build Variables 设置 `NODE_VERSION=24` 和 `PNPM_VERSION=11.19.0`。
 7. GitHub Builds 连接前，当前可恢复的生产发布命令是仓库根目录的 `pnpm deploy:worker`；不要另建 Hello World Worker、Pages 项目或第二个 D1。
 8. MVP 可用后再继续 Direct 同卡片、跨扫描 ID 和历史 overlap 探针；仅记录脱敏字段形状并补充合成测试。
 9. 每个阶段继续汇报：已完成变更、验证结果、风险、下一步；只有产品边界、部署成本、隐私、核心数据模型或目标不可行时询问用户。
@@ -138,14 +145,14 @@ pnpm smoke:local
 
 不要重新讨论 Q1-Q219。沿用已有未提交实现，不执行 git reset --hard、git checkout -- 或删除未提交文件。
 
-当前重点是完成 JSON-first MVP 的首个真实极小批次验收。生产 D1、Worker、四项 Runtime Secrets、正式 Custom Domain 与 GitHub main 已完成；请先检查 git status、QCE 本地目录、40653/8787 端口、QQ/QCE/AlbumRobot 进程，不要假设上轮自动化没有留下进程。
+当前重点是固化已通过的 JSON-first 真实生产验收，并继续 Cloudflare GitHub Builds 自动部署与 Direct 探针。生产 D1、Worker、四项 Runtime Secrets、正式 Custom Domain、GitHub main 和 JSON-first 真实链路均已完成；请先检查 git status、QCE 本地目录、40653/8787 端口、QQ/QCE/AlbumRobot 进程，不要假设上轮自动化没有留下进程。
 
 已完成并保留的实现：Phase 0 monorepo、Worker/D1 本地基线、隐私边界、合成 Vertical Slice、可视化 WPF Desktop Sync V1、QCE Direct/JSON Normalizer、SQLite Pending、Batch 上传、Worker/PWA 认证和生产部署门禁。首版路径是 QCE 手工导出 JSON → Desktop Sync → Worker/D1 → 密码保护 PWA；Direct 同 card 分支、跨扫描 ID 稳定性和历史 overlap 后续再验证。
 
 自动托管 Worker 已验收：
 - `LocalWorkerHost` 现在直接运行仓库内 `node.exe` 与 Wrangler JavaScript 入口，避免 `pnpm.cmd` shim 退出后遗留 workerd；真实 .NET 10 冒烟已验证自动迁移、启动、health、健康实例复用和只停止自有进程。
 - 该行为只适用于 loopback 开发地址。生产 Desktop 使用远端 Cloudflare Worker；远端不可用时会给出安全错误，不会启动本地 Worker 冒充生产服务。
-- `dotnet test apps/sync/AlbumRobot.Sync.sln --no-restore` 为 23/23，build 为 0 warning/0 error；Worker 测试为 12/12、Web 测试为 8/8，本地认证 smoke 通过。
+- `dotnet test apps/sync/AlbumRobot.Sync.sln --no-restore` 为 27/27，build 为 0 warning/0 error；Worker 测试为 13/13、Web 测试为 8/8，本地认证 smoke 通过。
 
 本机 QCE 诊断证据：
 - 40653 `qce-server` 与 QQ 保持运行；群列表、成员和 message envelope 曾在本机脱敏验证。
@@ -155,9 +162,9 @@ pnpm smoke:local
 
 下一步必须按顺序：
 1. 阅读 `docs/runbooks/cloudflare-first-deploy.md`，确认现有生产状态；生产 D1、database ID、远端 migration、Worker、Secrets 和正式域名不要重复创建。
-2. 把 Desktop Sync 的 Worker API 设为 `https://album.rocknrollliberty.dpdns.org`，从 Windows Credential Locker 取得 Sync Token；只导入 QCE 手工导出的目标群 JSON，并先上传一个极小标准化批次。
+2. Desktop Sync 的 Worker API 已指向正式域名，真实 JSON-first 标准化批次已完成生产验收；后续日常导入继续遵守相同隐私边界，一次提交会自动分批清空 Pending。
 3. 不要在对话或 Git 中输出凭据和 secrets，不要上传 Raw QQ、普通聊天正文或完整 JSON。
-4. 真实极小批次通过后，在 Cloudflare 为现有 `albumrobot` Worker 连接公开 GitHub 仓库 `main`，显式设置 Node 24 / pnpm 11.19.0，关闭 Preview；不要新建 Hello World、Pages 项目、Worker 或 D1。
+4. 在 Cloudflare 为现有 `albumrobot` Worker 连接公开 GitHub 仓库 `main`，显式设置 Node 24 / pnpm 11.19.0，关闭 Preview；不要新建 Hello World、Pages 项目、Worker 或 D1。
 5. MVP 可用后才继续 Direct 同卡片、跨扫描 ID 和历史 overlap 探针。
 
 每阶段汇报：已完成变更、验证结果、风险、下一步。只有产品边界、部署成本、隐私、核心数据模型或目标不可行时才提问。
@@ -183,11 +190,11 @@ pnpm smoke:local
 
 ### 验证记录
 
-- .NET 测试最新已通过 23/23。
+- .NET 测试最新已通过 27/27。
 - .NET solution build 最新已通过 0 warning/0 error（包含 WPF App 和 `LocalWorkerHost` 编译）。
 - 根目录格式、隐私扫描、Lint、TypeScript、Worker test/build 曾全部通过；文档格式修正后 `pnpm format:check` 和 `pnpm privacy:scan` 也通过。
 - WPF 可视化与本地浏览器认证冒烟均通过；Web 密码覆盖层的错误态、成功态和 Album 页面均已检查，控制台无错误。
-- 当前交接检查时没有发现 `AlbumRobot.Sync.App` 或 8787 监听进程；40653 仍由 QCE 监听。QQ 进程没有被终止或修改。
+- 当前收尾检查时 40653 / 8787 均无监听，也没有 QQ、QCE 或 AlbumRobot 进程；后续仍必须重新检查，不能假设 UI 自动化不会留下进程。
 
 ### 隐私与安全不可违背项
 
@@ -211,5 +218,30 @@ pnpm smoke:local
 - GitHub CI 首轮发现并修复 Linux 隐私扫描路径与并行构建静态资源竞态；修复后的 Ubuntu Node 与 Windows .NET 任务均通过。
 - 生产 D1、远端 migration、Worker、四项加密 Runtime Secrets 和正式 Custom Domain 已完成。正式入口为 `https://album.rocknrollliberty.dpdns.org`，`workers.dev` 与 Preview URL 已显式关闭。
 - 正式入口已通过 health、HTML、错误 / 正确密码、受保护 Session、专辑读取、无 Token 401 和带 Token 空批次 200；Session Cookie 具备 `HttpOnly`、`Secure`、`SameSite=Lax`。
-- 生产凭据没有进入 Git、日志或对话；用户需要恢复的值保存在本机 Windows Credential Locker 的 `AlbumRobot Production` 项。
-- 尚未上传任何真实 QQ、成员、消息或专辑业务数据。下一步是 Desktop UI 的一个极小 JSON-first 真实批次，再连接 Cloudflare GitHub Builds。
+- 生产凭据没有进入 Git、日志或对话；Desktop Sync 的 Sync Token 仅保存在当前 Windows 用户的 Credential Manager，按 Worker 地址隔离，不进入设置、SQLite 或日志。
+- Desktop UI 已用一份用户指定的真实 QCE JSON Export 完成生产验收；原文件仅在本机解析，Worker/D1 只接收标准化候选，受保护 API 与 D1 聚合只读检查确认数据可用。真实群、成员、消息、文件名与内容均未写入文档。
+- 验收发现并修复了超过 100 条 Pending 需要重复点击的问题：编排器现在一次操作自动分批清空目标群队列、累计回执，WPF 显示完整 Pending 总数；合成回归测试覆盖跨批次行为。
+
+## 11. JSON 通用 ID 误报修复与生产清理
+
+- 根因已经确定：JSON Normalizer 会展开每个 QCE 元素的 `data`，旧 Detector 又把通用 `id` 当作专辑 ID，因此普通表情、贴纸和回复引用会生成缺元数据 Album；前端只是正确显示了云端占位值，并非视觉层故障。
+- `NeteaseAlbumDetector` 已移除通用 `id` 入口，只保留明确专辑 ID 字段和经网易云 album URL 验证的分支。新增三条合成 .NET 回归覆盖裸 ID 拒绝、有效 URL 优先及 JSON 元素误报。
+- Worker Album upsert 已防止 `Untitled` / `Unknown artist` 覆盖已有完整元数据，并新增一条 Worker 回归。
+- 修复版已通过 Wrangler CLI 部署。清理前取得了 D1 Time Travel 恢复书签（不写入公开仓库，保存在本机 Windows Credential Locker 的 `AlbumRobot D1 Recovery` 项），精确复核并删除 24 个误报 Album 及其 51 条关联 Share。
+- 清理后 D1 和密码会话 API 均复核通过：68 个 Album、76 条 Share，未知标题、未知艺人、缺失封面和孤立 Album 均为 0。
+- 最新门禁：Worker 13/13、Web 8/8、.NET 27/27；完整 pnpm 门禁、.NET build（0 warning / 0 error）、production preflight 与 `git diff --check` 通过。
+- 当前这些修改与之前的一键跨批提交改动仍在工作树中，尚未代表已经提交或推送；继续时不得重置或覆盖。
+- Desktop Sync 已新增“启动 QCE”按钮；它会在被忽略的 `qce-data` 目录下递归查找 `launcher-user.bat`，存在唯一历史账号时通过 NapCat 快速登录参数优先复用本机授权，只启动或复用本机 full-mode QCE，不获取或输出 QCE token，也不会在关闭窗口时终止 QCE/QQ。普通 QQ 占用同一会话时仍需退出普通 QQ；NapCat 不支持直接注入已运行的普通 QQ。安装新版后需重启 Desktop Sync 才能看到按钮。
+
+## 12. 远端 Worker 配置诊断（2026-08-16）
+
+- 正式域名 DNS/TLS 可达，`GET /api/health` 实测 HTTP 200，但响应为 `ok:false`、`configured:false`；本机没有读取或输出 Secret 值。
+- `wrangler secret list` 显示四个 Secret 名称存在，但这不能证明值已满足 Worker 的运行时校验；需在 Cloudflare 重新保存并部署 `PRIMARY_GROUP_ID`、`GROUP_PASSWORD`、`SESSION_SECRET`、`SYNC_TOKEN`，再复测 `configured:true`。
+- Desktop Sync 已将该状态与网络不可达区分显示；在远端健康恢复前不要继续上传验收。远端 URL 仍只健康检查，不会启动本地 Worker。
+
+## 13. Desktop 远端 Worker 一键同步（2026-08-16）
+
+- “立即同步”和“上传待同步”统一通过 `SyncRuntime` 的远端 Batch API 推送；桌面 UI 不再调用 `LocalWorkerHost`，也不再启动、迁移或等待本地 Worker。
+- Sync 启动只加载本地设置，不自动刷新 QCE/Worker；用户点击“启动 QCE”或“检查连接”后才主动读取群列表，避免启动时阻塞式失败弹窗。
+- Worker 默认地址改为正式 HTTPS 域名；上传拒绝 loopback Worker，远端失败时标准化 Pending 保留在本机等待重试。
+- 本次回归：.NET Release 测试 37/37、Release build 0 warning / 0 error；pnpm 全部门禁与 `git diff --check` 通过。

@@ -6,7 +6,7 @@ public sealed record SyncSettings
 {
     public string QceBaseUrl { get; init; } = "http://127.0.0.1:40653";
 
-    public string WorkerBaseUrl { get; init; } = "http://127.0.0.1:8787";
+    public string WorkerBaseUrl { get; init; } = "https://album.rocknrollliberty.dpdns.org";
 
     public string? SelectedGroupId { get; init; }
 

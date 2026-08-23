@@ -426,8 +426,14 @@ app.post("/api/sync/batch", async (c) => {
         `INSERT INTO albums (netease_album_id, title, artist, cover_url, netease_url, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
          ON CONFLICT(netease_album_id) DO UPDATE SET
-           title = excluded.title,
-           artist = excluded.artist,
+           title = CASE
+             WHEN excluded.title = 'Untitled' THEN albums.title
+             ELSE excluded.title
+           END,
+           artist = CASE
+             WHEN excluded.artist = 'Unknown artist' THEN albums.artist
+             ELSE excluded.artist
+           END,
            cover_url = COALESCE(excluded.cover_url, albums.cover_url),
            netease_url = COALESCE(excluded.netease_url, albums.netease_url),
            updated_at = excluded.updated_at`,

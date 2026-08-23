@@ -64,4 +64,27 @@ public sealed class QceJsonExportNormalizerTests
         Assert.Equal("https://example.invalid/cover.jpg", album.CoverUrl);
         Assert.DoesNotContain("synthetic-secret", payloadJson);
     }
+
+    [Fact]
+    public void RejectsGenericQqElementIdWithoutNeteaseEvidence()
+    {
+        using var document = JsonDocument.Parse("""
+            {
+              "id": "message-example",
+              "seq": "sequence-example",
+              "time": "2026-08-14T15:42:17.000Z",
+              "sender": { "uid": "member-example", "nickname": "Example Member" },
+              "type": "face",
+              "content": {
+                "elements": [
+                  { "type": "face", "data": { "id": "123456", "faceType": "synthetic-face", "name": "Synthetic element" } }
+                ]
+              }
+            }
+            """);
+
+        var message = Assert.Single(QceJsonExportNormalizer.ReadMessages(document.RootElement, "group-example"));
+
+        Assert.Null(NeteaseAlbumDetector.Detect(message.Payload));
+    }
 }

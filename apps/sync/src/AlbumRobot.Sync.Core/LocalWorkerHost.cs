@@ -34,10 +34,18 @@ public sealed class LocalWorkerHost : IAsyncDisposable
     public async Task EnsureReadyAsync(Uri workerBaseAddress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(workerBaseAddress);
-        if (await IsHealthyAsync(workerBaseAddress, cancellationToken)) return;
+        var initialHealth = await ReadHealthAsync(workerBaseAddress, cancellationToken);
+        if (initialHealth?.Ok == true) return;
 
         if (!workerBaseAddress.IsLoopback)
         {
+            if (initialHealth?.Configured == false)
+            {
+                throw new LocalWorkerException(
+                    "远端 Worker 已连接，但运行时配置未完成；请在 Cloudflare Worker 的 Variables & Secrets 中检查 PRIMARY_GROUP_ID、GROUP_PASSWORD、SESSION_SECRET 和 SYNC_TOKEN，并重新部署。"
+                );
+            }
+
             throw new LocalWorkerException("远端 Worker 当前不可用；请检查网络、部署状态和 Worker 地址。");
         }
 
@@ -202,27 +210,34 @@ public sealed class LocalWorkerHost : IAsyncDisposable
 
     private async Task<bool> IsHealthyAsync(Uri workerBaseAddress, CancellationToken cancellationToken)
     {
+        var health = await ReadHealthAsync(workerBaseAddress, cancellationToken);
+        return health?.Ok == true;
+    }
+
+    private async Task<WorkerHealthResponse?> ReadHealthAsync(
+        Uri workerBaseAddress,
+        CancellationToken cancellationToken)
+    {
         try
         {
             var healthUri = new Uri(
                 new Uri(EnsureTrailingSlash(workerBaseAddress), UriKind.Absolute),
                 "api/health");
             using var response = await healthClient.GetAsync(healthUri, cancellationToken);
-            if (!response.IsSuccessStatusCode) return false;
-            var payload = await response.Content.ReadFromJsonAsync<WorkerHealthResponse>(cancellationToken: cancellationToken);
-            return payload?.Ok == true;
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<WorkerHealthResponse>(cancellationToken: cancellationToken);
         }
         catch (HttpRequestException)
         {
-            return false;
+            return null;
         }
         catch (JsonException)
         {
-            return false;
+            return null;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return false;
+            return null;
         }
     }
 
@@ -313,5 +328,5 @@ public sealed class LocalWorkerHost : IAsyncDisposable
     private static string EnsureTrailingSlash(Uri address) =>
         address.AbsoluteUri.EndsWith('/') ? address.AbsoluteUri : address.AbsoluteUri + "/";
 
-    private sealed record WorkerHealthResponse(bool Ok);
+    private sealed record WorkerHealthResponse(bool Ok, bool? Configured = null);
 }

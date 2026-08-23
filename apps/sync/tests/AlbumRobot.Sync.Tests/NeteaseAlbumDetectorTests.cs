@@ -40,4 +40,32 @@ public sealed class NeteaseAlbumDetectorTests
         Assert.True(NeteaseAlbumDetector.TryExtractAlbumId("https://music.163.com/#/album?id=123456", out var albumId));
         Assert.Equal("123456", albumId);
     }
+
+    [Fact]
+    public void RejectsGenericNumericElementIdWithoutNeteaseEvidence()
+    {
+        var payload = new JsonElementLike(new Dictionary<string, object?>
+        {
+            ["id"] = "123456",
+            ["faceType"] = "synthetic-face",
+            ["name"] = "Synthetic element",
+        });
+
+        Assert.Null(NeteaseAlbumDetector.Detect(payload));
+    }
+
+    [Fact]
+    public void PrefersVerifiedNeteaseUrlOverGenericElementId()
+    {
+        var payload = new JsonElementLike(new Dictionary<string, object?>
+        {
+            ["id"] = "111111",
+            ["url"] = "https://music.163.com/#/album?id=222222",
+        });
+
+        var album = NeteaseAlbumDetector.Detect(payload);
+
+        Assert.NotNull(album);
+        Assert.Equal("222222", album!.AlbumId);
+    }
 }

@@ -12,6 +12,32 @@ const env = {
   SYNC_TOKEN: "example-sync-token-with-sufficient-entropy",
 };
 
+function createCapturingDatabase() {
+  const prepared: Array<{ query: string; bindings: unknown[] }> = [];
+  const database = {
+    prepare(query: string) {
+      const statement = {
+        query,
+        bindings: [] as unknown[],
+      };
+      prepared.push(statement);
+      return {
+        bind(...bindings: unknown[]) {
+          statement.bindings = bindings;
+          return this;
+        },
+      } as unknown as D1PreparedStatement;
+    },
+    async batch(statements: D1PreparedStatement[]) {
+      return statements.map((_, index) => ({
+        meta: { changes: index % 4 === 3 ? 1 : 0 },
+      }));
+    },
+  } as unknown as D1Database;
+
+  return { database, prepared };
+}
+
 describe("JSON-first Worker security boundary", () => {
   it("keeps the batch item limit explicit", () => {
     expect(100).toBe(100);
@@ -146,5 +172,52 @@ describe("JSON-first Worker security boundary", () => {
     ]);
     expect(feed.status).toBe(401);
     expect(stats.status).toBe(401);
+  });
+
+  it("preserves known album metadata when a later batch contains placeholders", async () => {
+    const { database, prepared } = createCapturingDatabase();
+    const response = await app.request(
+      "http://localhost/api/sync/batch",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${env.SYNC_TOKEN}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          group_id: env.PRIMARY_GROUP_ID,
+          items: [
+            {
+              group_id: env.PRIMARY_GROUP_ID,
+              source_message_id: "message-example",
+              member_id: "member-example",
+              member_nickname: "Example Member",
+              shared_at: "2026-08-14T15:42:17.000Z",
+              date_precision: "second",
+              origin: "detected",
+              album: {
+                netease_album_id: "123456",
+                title: "Untitled",
+                artist: "Unknown artist",
+                cover_url: null,
+                netease_url: "https://music.163.com/#/album?id=123456",
+              },
+            },
+          ],
+        }),
+      },
+      { ...env, DB: database },
+    );
+
+    expect(response.status).toBe(200);
+    const albumUpsert = prepared.find((statement) =>
+      statement.query.includes("INSERT INTO albums"),
+    );
+    expect(albumUpsert?.query).toMatch(
+      /title = CASE\s+WHEN excluded\.title = 'Untitled' THEN albums\.title\s+ELSE excluded\.title\s+END/,
+    );
+    expect(albumUpsert?.query).toMatch(
+      /artist = CASE\s+WHEN excluded\.artist = 'Unknown artist' THEN albums\.artist\s+ELSE excluded\.artist\s+END/,
+    );
   });
 });

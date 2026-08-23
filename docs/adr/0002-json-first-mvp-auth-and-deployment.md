@@ -16,13 +16,13 @@ The Direct QCE message endpoint is temporarily occupied by a long-running export
 5. Group-password attempts use a Cloudflare Rate Limiting binding with a single login-class key. This avoids storing client IPs while placing a low-cost bound on brute-force traffic per Cloudflare location.
 6. Static Assets and API responses send restrictive security headers. The SPA may load cover images over HTTPS, while scripts and API connections remain same-origin.
 7. Runtime values are Cloudflare encrypted Secrets. Synthetic local values live only in `wrangler.local.jsonc`; the production config contains no credential values and fails preflight while its D1 ID is still a placeholder.
-8. Desktop Sync keeps the remote Sync Token in process memory only for this MVP. Secure persistence can be added later with Windows Credential Manager or DPAPI.
-9. Automatic local Worker hosting is restricted to loopback addresses. It launches the repository-local Wrangler JavaScript entry with the resolved Node executable, preserving child-process ownership. Remote URLs are health-checked only.
+8. Desktop Sync keeps the remote Sync Token in process memory while running and persists it, keyed by the normalized Worker URL, in the current Windows user's Windows Credential Manager. It never stores the token in settings, SQLite, logs, or the repository.
+9. Production Desktop Sync uses only a remote HTTPS Worker URL for upload. The desktop UI does not start or migrate a local Worker; the repository's `LocalWorkerHost` remains a developer/test seam only. Remote failures leave Pending data local for retry.
 
 ## Consequences
 
 - The MVP can be deployed without exposing open album or ingestion APIs.
 - QCE export remains a manual step, but it avoids blocking on unverified Direct behavior and preserves the local-only privacy boundary.
-- A user enters the Sync Token once per Desktop Sync process until secure Windows persistence is implemented.
+- A user enters the Sync Token once per Worker URL; later uploads reuse the current user's protected Windows credential until the token is rotated or rejected.
 - Production deployment needs one controlled D1 creation/migration and four runtime Secrets before health reports ready.
 - GitHub connection occurs only after the production D1 ID is configured and the validated application commit is pushed.

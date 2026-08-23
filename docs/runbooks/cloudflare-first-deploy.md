@@ -6,7 +6,7 @@
 
 - 公开 GitHub 仓库的应用代码已合入 `main`，PR 与 `main` push 的 Node / .NET GitHub Actions 均通过；
 - 生产 D1、database ID、初始远端 migration、Worker、四项 Runtime Secrets 和正式 Custom Domain 均已完成；
-- 正式入口为 `https://album.rocknrollliberty.dpdns.org`，已经通过无真实数据的健康、认证、读取和空 Batch 验收；
+- 正式入口为 `https://album.rocknrollliberty.dpdns.org`。部署记录曾通过无真实数据的健康、认证、读取和空 Batch 验收；每次 Secret 变更后都必须重新检查 `/api/health`，当前实测需重新核对运行时 Secret 配置；
 - Cloudflare GitHub Builds 尚未连接。当前可恢复的发布路径是仓库根目录运行 `pnpm deploy:worker`；连接 GitHub 后再把它切换为自动生产发布路径；
 - `workers.dev` 只用于首次部署验收，绑定正式域名后已显式关闭；Preview URL 与非生产分支部署也保持关闭，避免误用生产 D1。
 
@@ -105,7 +105,7 @@ SYNC_TOKEN        # 独立高熵随机值，至少 32 bytes
 
 首次部署已先使用 Cloudflare 提供的 `workers.dev` 地址验收；绑定正式域名后 `workers.dev` 已关闭。以下 1～4 已在 `workers.dev` 和正式域名通过，带正确 Token 的空批次也已返回 200：
 
-1. `GET /api/health` 返回 `ok: true`、`configured: true`；
+1. `GET /api/health` 返回 `ok: true`、`configured: true`（若 `configured: false`，优先重新保存并部署四项 Runtime Secrets，不要继续做桌面上传）；
 2. 访问根路径显示群共享密码覆盖层；
 3. 错误密码原位失败，正确密码进入专辑页；
 4. 未携带 Sync Token 的 `/api/sync/batch` 返回 `401`；

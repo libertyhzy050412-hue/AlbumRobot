@@ -13,7 +13,8 @@ public partial class MainWindow : Window
 {
     private readonly SyncSettingsStore settingsStore = new();
     private readonly QceAccessTokenProvider tokenProvider = new();
-    private readonly LocalWorkerHost workerHost = new();
+    private readonly SyncTokenCredentialStore syncTokenStore = new();
+    private readonly LocalQceHost qceHost = new();
     private SyncSettings settings = new();
     private SyncRuntime? runtime;
     private bool runtimeHasQce;
@@ -31,7 +32,7 @@ public partial class MainWindow : Window
         {
             settings = await settingsStore.LoadAsync();
             ApplySettingsToControls();
-            await RefreshGroupsAsync();
+            SetStatus("已加载本地设置；点击“启动 QCE”或“检查连接”后读取群列表。", isError: false);
         }
         catch (Exception exception)
         {
@@ -48,8 +49,42 @@ public partial class MainWindow : Window
         }
         finally
         {
-            await workerHost.DisposeAsync();
+            await qceHost.DisposeAsync();
         }
+    }
+
+    private async void StartQceButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var refreshGroups = false;
+        try
+        {
+            SetBusy(true);
+            var requested = ReadSettingsFromControls();
+            requested.Validate();
+            settings = requested;
+            await settingsStore.SaveAsync(settings);
+            SetStatus("正在启动本机 QCE…");
+
+            var result = await qceHost.EnsureStartedAsync(
+                new Uri(requested.QceBaseUrl, UriKind.Absolute));
+            QceStatusText.Text = result.StartedByDesktop
+                ? (result.UsedQuickLogin ? "QCE 已启动（本机快速登录）" : "QCE 已启动")
+                : "QCE 已在运行";
+            SetStatus("QCE 已就绪，正在读取群列表…", isError: false);
+            refreshGroups = true;
+        }
+        catch (Exception exception)
+        {
+            QceStatusText.Text = "未连接";
+            SetStatus("QCE 启动失败。", isError: true);
+            ShowSafeError(exception);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+
+        if (refreshGroups) await RefreshGroupsAsync();
     }
 
     private async void RefreshGroupsButton_OnClick(object sender, RoutedEventArgs e)
@@ -74,7 +109,6 @@ public partial class MainWindow : Window
         try
         {
             SetBusy(true);
-            if (!await EnsureWorkerReadyAsync()) return;
 
             var current = ReadSettingsFromControls() with
             {
@@ -95,9 +129,9 @@ public partial class MainWindow : Window
                     endTime,
                     settings.PageSize);
                 UpdateScanStats(scan);
-                var pending = await PendingForGroupAsync(group.GroupId);
-                UpdatePendingStatus(pending.Count);
-                if (pending.Count == 0)
+                var pendingCount = await PendingCountForGroupAsync(group.GroupId);
+                UpdatePendingStatus(pendingCount);
+                if (pendingCount == 0)
                 {
                     SetStatus("首次扫描完成，没有发现可同步的网易云专辑。", isError: false);
                     LastRunText.Text = $"扫描完成：{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}";
@@ -105,7 +139,7 @@ public partial class MainWindow : Window
                 }
 
                 var confirmation = MessageBox.Show(
-                    $"首次扫描发现 {pending.Count} 条待同步候选。\n\n仅会上传标准化的群、成员、消息来源和专辑字段，不会上传 Raw QQ 消息。现在上传吗？",
+                    $"首次扫描发现 {pendingCount} 条待同步候选。\n\n仅会上传标准化的群、成员、消息来源和专辑字段，不会上传 Raw QQ 消息。现在上传吗？",
                     "确认首次同步",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
@@ -139,6 +173,18 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
+            if (exception is HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized })
+            {
+                try
+                {
+                    syncTokenStore.TryDelete(ReadSettingsFromControls().WorkerBaseUrl);
+                }
+                catch (Exception)
+                {
+                    // Keep the original sync error as the user-facing result.
+                }
+            }
+
             SetStatus("同步失败；本地队列已保留，可稍后重试。", isError: true);
             ShowSafeError(exception);
         }
@@ -204,22 +250,24 @@ public partial class MainWindow : Window
         if (!await EnsureRuntimeAsync(requireQce: false, requireSyncToken: true) || runtime is null) return;
         try
         {
-            var pending = await PendingForGroupAsync(group.GroupId);
-            if (pending.Count == 0)
+            var pendingCount = await PendingCountForGroupAsync(group.GroupId);
+            if (pendingCount == 0)
             {
                 SetStatus("当前目标群没有待同步候选。", isError: false);
                 return;
             }
 
-            var confirmation = MessageBox.Show(
-                $"本地有 {pending.Count} 条待同步候选。确认提交到 Worker API 吗？",
-                "确认上传",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-            if (confirmation != MessageBoxResult.Yes) return;
+            if (!settings.InitialSyncCompleted)
+            {
+                var confirmation = MessageBox.Show(
+                    $"本地有 {pendingCount} 条待同步候选。确认提交到 Worker API 吗？",
+                    "确认上传",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                if (confirmation != MessageBoxResult.Yes) return;
+            }
 
             SetBusy(true);
-            if (!await EnsureWorkerReadyAsync()) return;
             SetStatus("正在提交本地标准化候选…");
             var result = await runtime.Orchestrator.SubmitPendingAsync(group.GroupId);
             UpdateSubmissionStats(result);
@@ -235,6 +283,18 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
+            if (exception is HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized })
+            {
+                try
+                {
+                    syncTokenStore.TryDelete(ReadSettingsFromControls().WorkerBaseUrl);
+                }
+                catch (Exception)
+                {
+                    // Keep the original upload error as the user-facing result.
+                }
+            }
+
             SetStatus("待同步提交失败；队列已保留，可重试。", isError: true);
             ShowSafeError(exception);
         }
@@ -358,35 +418,34 @@ public partial class MainWindow : Window
     {
         var token = SyncTokenPasswordBox.Password.Trim();
         var workerUri = new Uri(workerBaseUrl, UriKind.Absolute);
-        if (token.Length == 0 && workerUri.IsLoopback)
+        if (workerUri.IsLoopback || workerUri.Scheme != Uri.UriSchemeHttps)
         {
-            return "albumrobot-local-sync-token-not-production";
+            if (required)
+            {
+                throw new InvalidDataException(
+                    "桌面端上传使用远端 Worker；请将 Worker API 设置为 Cloudflare HTTPS 地址。"
+                );
+            }
+
+            return null;
         }
 
-        if (required && token.Length == 0)
+        if (token.Length > 0)
         {
-            throw new InvalidDataException("请输入 Cloudflare 中配置的 Sync Token；它不会写入本地设置。");
+            // A failed write must not block the current upload; the token still
+            // remains in memory for this run and can be retried later.
+            syncTokenStore.TryWrite(workerBaseUrl, token);
+            return token;
         }
 
-        return token.Length == 0 ? null : token;
-    }
+        if (syncTokenStore.TryRead(workerBaseUrl, out var storedToken)) return storedToken;
+        if (required)
+        {
+            throw new InvalidDataException(
+                "首次使用此 Worker 时，请在 Sync Token 中输入一次；之后会从当前 Windows 用户的安全凭据中自动读取。");
+        }
 
-    private async Task<bool> EnsureWorkerReadyAsync()
-    {
-        try
-        {
-            var requested = ReadSettingsFromControls();
-            requested.Validate();
-            SetStatus("正在准备本地 Worker…");
-            await workerHost.EnsureReadyAsync(new Uri(requested.WorkerBaseUrl, UriKind.Absolute));
-            return true;
-        }
-        catch (Exception exception)
-        {
-            SetStatus("本地 Worker 未就绪。", isError: true);
-            ShowSafeError(exception);
-            return false;
-        }
+        return null;
     }
 
     private SyncSettings ReadSettingsFromControls()
@@ -428,17 +487,17 @@ public partial class MainWindow : Window
 
     private QceGroupSnapshot? SelectedGroup() => TargetGroupComboBox.SelectedItem as QceGroupSnapshot;
 
-    private async Task<IReadOnlyList<ShareCandidate>> PendingForGroupAsync(string groupId)
+    private async Task<int> PendingCountForGroupAsync(string groupId)
     {
-        if (runtime is null) return Array.Empty<ShareCandidate>();
-        return (await runtime.PendingStore.ListPendingAsync(100)).Where(item => item.GroupId == groupId).ToArray();
+        if (runtime is null) return 0;
+        return await runtime.PendingStore.CountPendingAsync(groupId);
     }
 
     private async Task RefreshPendingStatusAsync(string groupId)
     {
         if (runtime is null) return;
-        var pending = await PendingForGroupAsync(groupId);
-        UpdatePendingStatus(pending.Count);
+        var pendingCount = await PendingCountForGroupAsync(groupId);
+        UpdatePendingStatus(pendingCount);
     }
 
     private void UpdateScanStats(QceScanResult result)
@@ -468,7 +527,8 @@ public partial class MainWindow : Window
     {
         var hasGroup = SelectedGroup() is not null;
         var enabled = !busy && hasGroup;
-        SyncButton.IsEnabled = enabled && runtimeHasQce;
+        StartQceButton.IsEnabled = !busy;
+        SyncButton.IsEnabled = enabled;
         ImportJsonButton.IsEnabled = enabled;
         SubmitPendingButton.IsEnabled = enabled;
         RefreshGroupsButton.IsEnabled = !busy;
@@ -501,9 +561,10 @@ public partial class MainWindow : Window
         var message = exception switch
         {
             QceApiException => "QCE 请求失败，请确认 QCE 版本和登录状态。",
+            LocalQceException qce => qce.Message,
             LocalWorkerException worker => worker.Message,
             HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized } => "Sync Token 无效，请核对后重试。",
-            HttpRequestException => "Worker API 不可用，请先启动本地 Worker 或检查地址。",
+            HttpRequestException => "Worker API 不可用，请检查远端 Worker 地址、部署状态和网络。",
             OperationCanceledException => "QCE 消息读取超时；请先等待或取消 QCE 导出任务，再重试。",
             InvalidDataException data => data.Message,
             FormatException format => format.Message,

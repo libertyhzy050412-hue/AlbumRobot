@@ -75,15 +75,43 @@ public sealed class PendingStore : IAsyncDisposable
 
     public async Task<IReadOnlyList<ShareCandidate>> ListPendingAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
+        return await ListPendingCoreAsync(groupId: null, limit, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ShareCandidate>> ListPendingForGroupAsync(
+        string groupId,
+        int limit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        return await ListPendingCoreAsync(groupId, limit, cancellationToken);
+    }
+
+    public async Task<int> CountPendingAsync(string groupId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM pending_items WHERE state = 'pending' AND group_id = $group_id;";
+        command.Parameters.AddWithValue("$group_id", groupId);
+        return checked(Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken)));
+    }
+
+    private async Task<IReadOnlyList<ShareCandidate>> ListPendingCoreAsync(
+        string? groupId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT group_id, source_message_id, member_id, member_nickname, shared_at,
                    album_id, title, artist, cover_url, netease_url, origin
               FROM pending_items
              WHERE state = 'pending'
+               AND ($group_id IS NULL OR group_id = $group_id)
              ORDER BY updated_at, source_message_id
              LIMIT $limit;
             """;
+        command.Parameters.AddWithValue("$group_id", (object?)groupId ?? DBNull.Value);
         command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 100));
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var items = new List<ShareCandidate>();

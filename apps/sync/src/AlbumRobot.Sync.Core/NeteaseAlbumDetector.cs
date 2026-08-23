@@ -46,7 +46,7 @@ public sealed record JsonElementLike(IReadOnlyDictionary<string, object?> Values
 public static partial class NeteaseAlbumDetector
 {
     private static readonly string[] UrlKeys = ["url", "album_url", "netease_url", "jumpUrl", "link"];
-    private static readonly string[] IdKeys = ["album_id", "albumId", "netease_album_id", "id"];
+    private static readonly string[] IdKeys = ["album_id", "albumId", "netease_album_id"];
 
     public static NeteaseAlbum? Detect(JsonElementLike payload)
     {

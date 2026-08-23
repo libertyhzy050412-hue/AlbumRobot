@@ -141,14 +141,27 @@ public static class QceMessageNormalizer
             case JsonValueKind.Null:
             case JsonValueKind.Undefined:
                 return null;
-            case JsonValueKind.String:
-                return value.GetString();
             case JsonValueKind.Number:
                 if (value.TryGetInt64(out var integer)) return integer;
                 return value.GetDouble();
             case JsonValueKind.True:
             case JsonValueKind.False:
                 return value.GetBoolean();
+            case JsonValueKind.String:
+                var text = value.GetString();
+                if (propertyName is not null &&
+                    propertyName.Equals("bytesData", StringComparison.OrdinalIgnoreCase) &&
+                    TryParseNestedJson(text, out var nestedDocument))
+                {
+                    using (nestedDocument)
+                    {
+                        return ConvertJsonValue(
+                            nestedDocument.RootElement,
+                            omitPlainTextBranch: true);
+                    }
+                }
+
+                return text;
             case JsonValueKind.Array:
                 return value.EnumerateArray()
                     .Select(item => ConvertJsonValue(item))
@@ -167,6 +180,29 @@ public static class QceMessageNormalizer
                 return fields;
             default:
                 return null;
+        }
+    }
+
+    private static bool TryParseNestedJson(string? text, out JsonDocument document)
+    {
+        document = null!;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        try
+        {
+            document = JsonDocument.Parse(text);
+            if (document.RootElement.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+            {
+                return true;
+            }
+
+            document.Dispose();
+            document = null!;
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 

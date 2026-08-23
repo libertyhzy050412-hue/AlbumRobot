@@ -67,6 +67,46 @@ public sealed class QceMessageNormalizerTests
     }
 
     [Fact]
+    public void ParsesDirectArkBytesDataCardMetadata()
+    {
+        using var document = JsonDocument.Parse("""
+            {
+              "success": true,
+              "data": {
+                "messages": [
+                  {
+                    "msgId": "message-bytes-data",
+                    "senderUid": "member-example",
+                    "sendMemberName": "Example Member",
+                    "msgTime": "2026-08-15T10:20:30+08:00",
+                    "elements": [
+                      {
+                        "elementType": 10,
+                        "arkElement": {
+                          "bytesData": "{\"meta\":{\"news\":{\"title\":\"Bytes Album\",\"desc\":\"Bytes Artist\",\"jumpUrl\":\"https://music.163.com/#/album?id=654321\",\"preview\":\"https://example.invalid/bytes-cover.jpg\"}}}"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "hasNext": false
+              }
+            }
+            """);
+
+        var message = Assert.Single(
+            QceMessageNormalizer.ReadMessages(document.RootElement, "group-example", 1, 100));
+
+        var album = NeteaseAlbumDetector.Detect(message.Payload);
+
+        Assert.NotNull(album);
+        Assert.Equal("654321", album!.AlbumId);
+        Assert.Equal("Bytes Album", album.Title);
+        Assert.Equal("Bytes Artist", album.Artist);
+        Assert.Equal("https://example.invalid/bytes-cover.jpg", album.CoverUrl);
+    }
+
+    [Fact]
     public void KeepsMessagesWithMissingOptionalFieldsWithoutInventingValues()
     {
         using var document = JsonDocument.Parse("""

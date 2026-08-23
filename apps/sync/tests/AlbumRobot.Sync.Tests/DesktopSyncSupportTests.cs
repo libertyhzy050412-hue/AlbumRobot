@@ -7,6 +7,12 @@ namespace AlbumRobot.Sync.Tests;
 public sealed class DesktopSyncSupportTests
 {
     [Fact]
+    public void UsesTheProductionRemoteWorkerByDefault()
+    {
+        Assert.Equal("https://album.rocknrollliberty.dpdns.org", new SyncSettings().WorkerBaseUrl);
+    }
+
+    [Fact]
     public void ReadsQceGroupEnvelopeWithoutDependingOnConsoleEncoding()
     {
         using var document = JsonDocument.Parse("""

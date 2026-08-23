@@ -42,7 +42,10 @@
             </Grid.ColumnDefinitions>
             <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="#16202A" Text="本机连接" />
             <TextBlock Grid.Column="1" Margin="14,3,0,0" Foreground="#66727E" Text="QCE 登录凭据只从本机安全配置读取，不写入 AlbumRobot。" TextWrapping="Wrap" />
-            <Button x:Name="RefreshGroupsButton" Grid.Column="2" Width="108" Height="32" Content="检查连接" Click="RefreshGroupsButton_OnClick" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+              <Button x:Name="StartQceButton" Width="108" Height="32" Margin="0,0,8,0" Content="启动 QCE" Click="StartQceButton_OnClick" />
+              <Button x:Name="RefreshGroupsButton" Width="108" Height="32" Content="检查连接" Click="RefreshGroupsButton_OnClick" />
+            </StackPanel>
 
             <TextBlock Grid.Row="1" Margin="0,16,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="QCE 地址" />
             <TextBox x:Name="QceBaseUrlTextBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,12,0,0" Padding="8" />
@@ -66,13 +69,13 @@
             </Grid.ColumnDefinitions>
             <TextBlock Grid.ColumnSpan="2" FontSize="17" FontWeight="SemiBold" Foreground="#16202A" Text="同步设置" />
 
-            <TextBlock Grid.Row="1" Margin="0,16,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="Worker API" />
+            <TextBlock Grid.Row="1" Margin="0,16,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="远端 Worker API" />
             <TextBox x:Name="WorkerBaseUrlTextBox" Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Padding="8" />
 
             <TextBlock Grid.Row="2" Margin="0,12,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="Sync Token" />
             <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,8,0,0">
               <PasswordBox x:Name="SyncTokenPasswordBox" Padding="8" />
-              <TextBlock Margin="0,5,0,0" Foreground="#8A949E" FontSize="12" Text="远端上传需要；仅保留在本次运行内存中，不写入设置或日志。" TextWrapping="Wrap" />
+              <TextBlock Margin="0,5,0,0" Foreground="#8A949E" FontSize="12" Text="首次输入后保存到当前 Windows 用户的安全凭据；之后上传会自动读取，不写入设置或日志。" TextWrapping="Wrap" />
             </StackPanel>
 
             <TextBlock Grid.Row="3" Margin="0,12,12,0" VerticalAlignment="Center" Foreground="#66727E" Text="目标群" />
